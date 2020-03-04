@@ -15,8 +15,11 @@ Suggests:
     sf,
     raster,
     unmarked,
-    shiny
-    eradicate
+    shiny,
+    eradicate,
+    tidyverse,
+    leaflet,
+    kableExtra
 VignetteBuilder: knitr
 URL: https://github.com/scrogster/eradicateShiny
 BugReports: https://github.com/scrogster/eradicateShiny/issues

@@ -42,12 +42,11 @@ output$map<-renderLeaflet({
 	#set up and tranform site boundary
 	bound<-site_bound()
 	detectors<-st_as_sf(detectors(), coords = c("x", "y"), crs=st_crs(bound))
-#	habras<-hab_raster()
-#	crs(habras)<-crs(bound) #assume same crs as region boundary
-#	habras2<-projectRaster(habras, to="+init=epsg:4326")
+	habras<-hab_raster()
+	crs(habras)<-crs(bound) #assume same crs as region boundary
 	leaflet() %>%
 		addProviderTiles("Esri.WorldTopoMap") %>%
- # 	addRasterImage(habras2) %>%
+  	addRasterImage(projectRaster(habras, crs="+init=epsg:4326"), opacity=0.5, ) %>%
 		addPolygons(data=st_transform(bound, "+init=epsg:4326")) %>%
 		addCircleMarkers(data=st_transform(detectors, "+init=epsg:4326"), color="red", radius=2)
 })

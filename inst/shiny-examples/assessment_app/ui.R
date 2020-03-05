@@ -1,6 +1,7 @@
 #this is the app for pre-eradication assessment using occupancy, n-mixture, royle-nichols or REST models
 #relies on functions in eradication package
 library(shiny)
+library(shinycssloaders)
 library(knitr)
 library(raster)
 library(sf)
@@ -11,12 +12,7 @@ library(kableExtra)
 library(leaflet)
 library(rgdal)
 library(rgeos)
-
-#read in example data to use as default inputs
-#traps<-eradicate::san_nic_pre$traps
-#counts<-eradicate::san_nic_pre$counts
-#region<- read_sf(system.file("extdata", "shape/san_nic_region.shp", package="eradicate"))
-#habitat<- raster(system.file("extdata", "san_nic_habitat.tif", package="eradicate"))
+library(eradicate)
 
 ##DEFINE THE USER INTERFACE################################################################################################
 ui<-fluidPage(
@@ -28,24 +24,29 @@ ui<-fluidPage(
 		sidebarPanel(#INPUT THE REGION, detector and detections FILEs ---------------------------------------------------
 								 fileInput(inputId="boundary", label="Region Shapefile",
 								 					multiple=TRUE,  accept=c('.shp','.dbf','.sbn','.sbx','.shx','.prj')),
-								 fileInput(inputId="habitat_raster", label="Habitat raster", accept=c(".tif", ".asc")),
-								 fileInput(inputId="detectors", label="Detector locations (csv)", accept=c("text/csv", ".csv")),
-								 fileInput(inputId="counts", label="Detection histories (csv)", accept=c("text/csv", ".csv")),
+								 fileInput(inputId="habitat_rasters", label="Habitat raster (.tif, .asc)", accept=c(".tif", ".asc")),
+								 fileInput(inputId="detectors", label="Detector locations (.csv)", accept=c("text/csv", ".csv")),
+								 fileInput(inputId="counts", label="Detection histories (.csv)", accept=c("text/csv", ".csv")),
 								 hr(),
 								 actionButton("Plot_design", "Plot design"),
 								 hr(),
 								 #SELECT APPROPRIATE MODEL --------------------------------------------------------------------------
-								 radioButtons(inputId="Model", label="Choose Model", inline=TRUE,
-								 						 choices=c("N-mixture"="Nmix",
-								 						 					"Royle-Nichols"="RN",
-								 						 					"Occupancy"="Occ",
-								 						 					"REST"="REST")),
-								 actionButton("Fit_mod", "Fit model")
+								 checkboxGroupInput(inputId="Models", label="Models to Fit",
+								 						 choices=list("N-mixture"="Nmix",
+								 						 					    "Royle-Nichols"="RN",
+								 						 					    "Occupancy"="Occ",
+								 						 					    "REST"="REST")),
+								 sliderInput("habitat_radius", "Habitat radius", min=0, max=5000, value=500, step=500),
+								 actionButton(inputId="Run_model", label="Run Model (s)")
 		),
 		mainPanel(
-		#	tableOutput("site_bound") #for debugging, these are the shapefile components in a table
-			#http://www.paulamoraga.com/book-geospatial/sec-shinyexample.html
-			leafletOutput(outputId = "map", height=700)
+			tabsetPanel(id="maintabs", type="tabs",
+									tabPanel(title="Map",	                value="panel1",
+													    leafletOutput(outputId = "map", height=700)),
+									tabPanel(title="Fitted Model",        value="panel2",
+													    textOutput(outputId="model") %>% withSpinner(type=4)),
+			            tabPanel(title="Abundance estimates", value="panel3",
+			            				 textOutput(outputId="abundance") %>% withSpinner(type=4) ) )
 		)
 	)
 )

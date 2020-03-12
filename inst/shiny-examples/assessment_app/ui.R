@@ -22,31 +22,35 @@ ui<-fluidPage(
 	titlePanel("Pre-implementation Monitoring"),
 	sidebarLayout(
 		sidebarPanel(#INPUT THE REGION, detector and detections FILEs ---------------------------------------------------
-								 fileInput(inputId="boundary", label="Region Shapefile",
+								 fileInput(inputId="boundary", label="Region Boundary (.shp)",
 								 					multiple=TRUE,  accept=c('.shp','.dbf','.sbn','.sbx','.shx','.prj')),
 								 fileInput(inputId="habitat_rasters", label="Habitat raster (.tif, .asc)", accept=c(".tif", ".asc")),
 								 fileInput(inputId="detectors", label="Detector locations (.csv)", accept=c("text/csv", ".csv")),
 								 fileInput(inputId="counts", label="Detection histories (.csv)", accept=c("text/csv", ".csv")),
 								 hr(),
 								 actionButton("Plot_design", "Plot design"),
+								 sliderInput("Habitat_opacity", "Habitat opacity", min=0, max=1, value=0.5, step=0.1),
+								 numericInput("habitat_radius", "Habitat sampling radius", min=0, max=NA, value=500, step=50),
 								 hr(),
 								 #SELECT APPROPRIATE MODEL --------------------------------------------------------------------------
-								 checkboxGroupInput(inputId="Models", label="Models to Fit",
-								 						 choices=list("N-mixture"="Nmix",
-								 						 					    "Royle-Nichols"="RN",
-								 						 					    "Occupancy"="Occ",
-								 						 					    "REST"="REST")),
-								 sliderInput("habitat_radius", "Habitat radius", min=0, max=5000, value=500, step=500),
-								 actionButton(inputId="Run_model", label="Run Model (s)")
+								 radioButtons(inputId="Model", label="Model to Fit",
+								 						 choices=list("Occupancy"="Occ",
+								 						 						 "Royle-Nichols"="RN",
+								 						 	            "N-mixture"="Nmix"
+								 						 					    ), selected="Occ"),
+								 numericInput("K", "K", min=1, max=NA, value=50, step=1),
+								 actionButton(inputId="Run_model", label="Run Model")
 		),
 		mainPanel(
 			tabsetPanel(id="maintabs", type="tabs",
+									#Map tab
 									tabPanel(title="Map",	                value="panel1",
 													    leafletOutput(outputId = "map", height=700)),
+									#Fitted models tab
 									tabPanel(title="Fitted Model",        value="panel2",
-													    textOutput(outputId="model") %>% withSpinner(type=4)),
-			            tabPanel(title="Abundance estimates", value="panel3",
-			            				 textOutput(outputId="abundance") %>% withSpinner(type=4) ) )
+													    fluidRow( tableOutput(outputId="parameter_table") %>% withSpinner(type=4)),
+													    fluidRow( tableOutput(outputId="abundance_table") %>% withSpinner(type=4)),
+													 ))
 		)
 	)
 )

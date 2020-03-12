@@ -38,41 +38,99 @@ buff<-reactive({
  input$habitat_radius
 })
 
-#jump to the model results tab after pushing model fit button
+habopacity<-reactive({
+	input$Habitat_opacity
+})
+
+#jump focus to appropriate tab on button press
 observeEvent(input$Run_model, {
 	updateTabsetPanel(session, "maintabs",
 										selected = "panel2")
 })
+observeEvent(input$Plot_design, {
+	updateTabsetPanel(session, "maintabs",
+										selected = "panel1")
+})
 
 
-#extract habitat data from rasters
-fitted_mod<-reactive({
+#which  models to fit?
+ModToFit<-reactive({
+	input$Model
+})
+K<-reactive({
+	input$K
+})
+
+#fit the selected model to the data.
+fit_mod<-reactive({
 dets<- detectors()
 rast<-hab_raster()
 cnts<-counts()
 buff<-buff()
+modname<-ModToFit()
+K<-K()
+print(modname)
+#prep the data
 habvals<-raster::extract(rast, dets, buffer=buff)
 habmean<- sapply(habvals, function(x) mean(x, na.rm=T))
 site.data<- cbind(dets, habmean)
-emf<- eradicate::eFrame(cnts, siteCovs = site.data)
-mOccu<- eradicate::occuM(~habmean, ~1, data=emf)
-out<-summary(mOccu)
+emf<-   eradicate::eFrame(cnts, siteCovs = site.data)
+if(modname== "Occ" ) {model<-eradicate::occuM(~habmean, ~1, data=emf)} else
+if(modname== "RN"  ) {model<-eradicate::occuRN(~habmean, ~1, K=K, data=emf)} else
+if(modname== "Nmix") {model<-eradicate::nmix(~habmean, ~1, K=K, data=emf)}
+model
+})
+
+#summary table of parameter estimates
+summary_tab<-reactive({
+mod<-fit_mod()
+out<-summary(mod)
+npar1<-nrow(out[[1]])
+npar2<-nrow(out[[2]])
+out<-rbind(out[[1]], out[[2]])
+data.frame(out)
 out
 })
 
-#display summary of fitted model
-output$model<-renderText({
-req(input$Run_model)
-paste(fitted_mod())
+#summary table of abundance estimates
+abund_tab<-reactive({
+	modname<-ModToFit()
+	mod<-fit_mod()
+	Nhat<-calcN(mod)
+  if(modname=="Occ"){out<-Nhat$Occ} else
+  if(modname=="RN"){out<-Nhat$Nhat} else
+  if(modname=="Nmix"){out<-Nhat$Nhat}
+	out
 })
+
+###########################################################################################
+#
+#   --- RENDER THE OUTPUTS  ----
+#
+###########################################################################################
+
+#render a table of parameter estimates
+output$parameter_table<-renderTable({
+req(input$Run_model)
+  summary_tab()
+}, row.names=FALSE, width=300, caption="Parameter estimates", caption.placement = "top")
+
+#render table of abundance estimates
+output$abundance_table<-renderTable({
+	req(input$Run_model)
+	abund_tab()
+}, row.names=FALSE, width=300, caption="Abundance estimate", caption.placement = "top")
 
 #Render a map of the input data
 output$map<-renderLeaflet({
 	req(input$boundary)
 	req(input$Plot_design)
+	req(input$Habitat_opacity)
+	req(input$habitat_radius)
 	#set up and tranform site boundary
 	bound<-site_bound()
 	detectors<-st_as_sf(detectors(), coords = c("x", "y"), crs=st_crs(bound))
+	detector_buff<-st_buffer(detectors, dist=buff())
 	habras<-hab_raster()
 	crs(habras)<-crs(bound) #assume same crs as region boundary
 	pal <- colorNumeric(c("#0C2C84", "#41B6C4", "#FFFFCC"), values(habras),
@@ -82,12 +140,13 @@ output$map<-renderLeaflet({
 		addProviderTiles("Esri.WorldTopoMap", group="ESRI Topo") %>%
 		addProviderTiles("Esri.WorldImagery", group="ESRI Satellite") %>%
 		addGraticule(interval=0.5) %>%
-  	addRasterImage(projectRaster(habras, crs="+init=epsg:4326", method="ngb"), colors=pal, opacity=0.5, group="habitat") %>%
+  	addRasterImage(projectRaster(habras, crs="+init=epsg:4326", method="ngb"), colors=pal, opacity=habopacity(), group="habitat") %>%
 		addPolygons(data=st_transform(bound, "+init=epsg:4326"), weight=2, fill=FALSE) %>%
-		addCircleMarkers(data=st_transform(detectors, "+init=epsg:4326"), color="red", radius=2, group="detectors") %>%
-		addScaleBar("bottomleft") %>%
+		addCircleMarkers(data=st_transform(detectors, "+init=epsg:4326"), color="red", radius=1, group="detectors") %>%
+		addPolygons(data=st_transform(detector_buff, "+init=epsg:4326"), color="red", weight=1, group="detector buffer") %>%
+		addScaleBar("bottomleft", options=scaleBarOptions(imperial=FALSE, maxWidth = 200)) %>%
 		addLayersControl(baseGroups=c("OSM (default)", "ESRI Topo", "ESRI Satellite"),
-										 overlayGroups = c("detectors", "habitat"))
+										 overlayGroups = c("detectors", "detector buffer", "habitat"))
 })
 
 }

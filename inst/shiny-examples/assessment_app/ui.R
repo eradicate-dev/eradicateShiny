@@ -29,18 +29,22 @@ ui<-fluidPage(
 								 fileInput(inputId="counts", label="Detection histories (.csv)", accept=c("text/csv", ".csv")),
 								 hr(),
 								 actionButton("Plot_design", "Plot design"),
-								 sliderInput("Habitat_opacity", "Habitat opacity", min=0, max=1, value=0.5, step=0.1),
+								 sliderInput("Habitat_opacity", "Habitat opacity", min=0, max=1, value=0.2, step=0.1),
 								 numericInput("habitat_radius", "Habitat sampling radius", min=0, max=NA, value=500, step=50),
 								 hr(),
 								 #SELECT APPROPRIATE MODEL --------------------------------------------------------------------------
-								 radioButtons(inputId="Model", label="Model to Fit",
+								 fluidRow(
+								 column(3, radioButtons(inputId="Model", label="Model to Fit",
 								 						 choices=list("Occupancy"="Occ",
 								 						 						 "Royle-Nichols"="RN",
 								 						 	            "N-mixture"="Nmix"
-								 						 					    ), selected="Occ"),
-								 numericInput("K", "K", min=1, max=NA, value=50, step=1),
-								 actionButton(inputId="Run_model", label="Run Model")
-		),
+								 						 					    ), selected="RN")),
+								 conditionalPanel("input.Model!='Occ'",
+								 column(2, numericInput(inputId="K", label="K", min=1, max=NA, value=50, step=1),
+								           checkboxInput("EstDens", "Estimate Density", value=FALSE)))
+								 ),
+								 actionButton(inputId="Run_model", label="Fit Model")
+		,width=4),
 		mainPanel(
 			tabsetPanel(id="maintabs", type="tabs",
 									#Map tab

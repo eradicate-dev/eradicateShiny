@@ -42,6 +42,9 @@ habopacity<-reactive({
 	input$Habitat_opacity
 })
 
+#############################################################
+#  -- respond to UI events
+#############################################################
 #jump focus to appropriate tab on button press
 observeEvent(input$Run_model, {
 	updateTabsetPanel(session, "maintabs",
@@ -51,14 +54,24 @@ observeEvent(input$Plot_design, {
 	updateTabsetPanel(session, "maintabs",
 										selected = "panel1")
 })
+#disable density if using occupancy model
+observe(if(input$Model!="Occ") {
+	updateCheckboxInput(session, "EstDens", value=FALSE)
+	updateNumericInput(session, "K", value=50)
+})
 
 
-#which  models to fit?
+#############################################################
+#  -- Model fitting options
+#############################################################
 ModToFit<-reactive({
 	input$Model
 })
 K<-reactive({
 	input$K
+})
+EstDens<-reactive({
+	input$EstDens
 })
 
 #fit the selected model to the data.
@@ -69,7 +82,6 @@ cnts<-counts()
 buff<-buff()
 modname<-ModToFit()
 K<-K()
-print(modname)
 #prep the data
 habvals<-raster::extract(rast, dets, buffer=buff)
 habmean<- sapply(habvals, function(x) mean(x, na.rm=T))
@@ -96,12 +108,24 @@ out
 abund_tab<-reactive({
 	modname<-ModToFit()
 	mod<-fit_mod()
-	Nhat<-calcN(mod)
+	EstDens<-EstDens() #estimate density?
+	buff<-buff()  #buffer zone radius
+	if(EstDens) { buffarea<-(pi*buff*buff)/(1000^2) } else {buffarea=1}   #area in km^2 around detector
+	#If occupancy, no buffer offset applies, else offset estimate with buffer area
+	if(modname=="Occ") {Nhat<-calcN(mod)} else {Nhat<-calcN(mod, off.set=log(buffarea))}
   if(modname=="Occ"){out<-Nhat$Occ} else
   if(modname=="RN"){out<-Nhat$Nhat} else
   if(modname=="Nmix"){out<-Nhat$Nhat}
 	out
 })
+
+#caption for abundance/occ table not working yet
+#abund_cap<-reactive({
+#	if(ModToFit()=="Occ") {capstring="Occupancy estimate"} else
+#		if(EstDens()) {capstring = "Density estimate"} else
+#		{capstring="Abundance estimate"}
+#	captstring
+#})
 
 ###########################################################################################
 #
@@ -119,7 +143,7 @@ req(input$Run_model)
 output$abundance_table<-renderTable({
 	req(input$Run_model)
 	abund_tab()
-}, row.names=FALSE, width=300, caption="Abundance estimate", caption.placement = "top")
+}, row.names=FALSE, width=300, caption="Caption", caption.placement = "top")
 
 #Render a map of the input data
 output$map<-renderLeaflet({
@@ -133,20 +157,20 @@ output$map<-renderLeaflet({
 	detector_buff<-st_buffer(detectors, dist=buff())
 	habras<-hab_raster()
 	crs(habras)<-crs(bound) #assume same crs as region boundary
-	pal <- colorNumeric(c("#0C2C84", "#41B6C4", "#FFFFCC"), values(habras),
-											na.color = "transparent")
+	pal <- colorNumeric("viridis", values(habras), na.color = "transparent")
 	leaflet() %>%
 		addTiles(group="OSM") %>%
 		addProviderTiles("Esri.WorldTopoMap", group="ESRI Topo") %>%
 		addProviderTiles("Esri.WorldImagery", group="ESRI Satellite") %>%
-		addGraticule(interval=0.5) %>%
-  	addRasterImage(projectRaster(habras, crs="+init=epsg:4326", method="ngb"), colors=pal, opacity=habopacity(), group="habitat") %>%
+  	addRasterImage(projectRaster(habras, crs="+init=epsg:4326", method="ngb"), colors=pal,
+  								 opacity=habopacity(), group="habitat raster") %>%
 		addPolygons(data=st_transform(bound, "+init=epsg:4326"), weight=2, fill=FALSE) %>%
 		addCircleMarkers(data=st_transform(detectors, "+init=epsg:4326"), color="red", radius=1, group="detectors") %>%
 		addPolygons(data=st_transform(detector_buff, "+init=epsg:4326"), color="red", weight=1, group="detector buffer") %>%
 		addScaleBar("bottomleft", options=scaleBarOptions(imperial=FALSE, maxWidth = 200)) %>%
 		addLayersControl(baseGroups=c("OSM (default)", "ESRI Topo", "ESRI Satellite"),
-										 overlayGroups = c("detectors", "detector buffer", "habitat"))
+										 overlayGroups = c("detectors", "detector buffer", "habitat raster"),
+										 options=layersControlOptions(collapsed=FALSE))
 })
 
 }

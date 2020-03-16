@@ -152,16 +152,10 @@ abund_tab<-reactive({
 	Nhat<-ests$Nhat
 	Nresid<-ests$Nresid
 	out<-bind_rows(Nhat, Nresid)
+	out<-data.frame("Parameter"=c("Nhat", "Nresid"), out)
 	out
 })
 
-#caption for abundance/occ table not working yet
-#abund_cap<-reactive({
-#	if(ModToFit()=="Occ") {capstring="Occupancy estimate"} else
-#		if(EstDens()) {capstring = "Density estimate"} else
-#		{capstring="Abundance estimate"}
-#	captstring
-#})
 
 ###########################################################################################
 #
@@ -176,12 +170,10 @@ req(input$Run_model)
 }, row.names=FALSE, width=300, caption="Parameter estimates", caption.placement = "top")
 
 output$removal_plot<-renderPlot({
-	#req(input$removals)
 	removal_plot()
 })
 
 output$detection_plot<-renderPlot({
-	#req(input$removals)
 	detection_plot()
 })
 
@@ -189,7 +181,7 @@ output$detection_plot<-renderPlot({
 output$abundance_table<-renderTable({
 	req(input$Run_model)
 	abund_tab()
-}, row.names=FALSE, width=300, caption="Abundance", caption.placement = "top")
+}, row.names=FALSE, width=300, caption="Abundances", caption.placement = "top")
 
 #Render a map of the input data
 output$map<-renderLeaflet({
@@ -215,7 +207,7 @@ output$map<-renderLeaflet({
 		addPolygons(data=st_transform(traps_buff, "+init=epsg:4326"), color="red", weight=1, group="traps buffer") %>%
 		addScaleBar("bottomleft", options=scaleBarOptions(imperial=FALSE, maxWidth = 200)) %>%
 		addLayersControl(baseGroups=c("OSM (default)", "ESRI Topo", "ESRI Satellite"),
-										 overlayGroups = c("detectors", "detector buffer", "habitat raster"),
+										 overlayGroups = c("traps", "traps buffer", "habitat raster"),
 										 options=layersControlOptions(collapsed=FALSE))
 })
 

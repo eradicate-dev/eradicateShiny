@@ -40,11 +40,13 @@ ui<-fluidPage(
 								 hr(),
 								 #SELECT APPROPRIATE MODEL --------------------------------------------------------------------------
 								 fluidRow(
-								 column(3, radioButtons(inputId="Model", label="Model to Fit",
-								 						 choices=list("remPoisM"="remPoisM",
-								 						 						 "remPois"="remPois"
-								 						 					    ), selected="remPoisM")),
-								 column(2, numericInput(inputId="K", label="K", min=1, max=NA, value=50, step=1))
+								 radioButtons(inputId="Model", label="Model to Fit",
+								 						 choices=list("remPois"="remPois",
+								 						 						 "remGR"="remGR",
+								 						 						 "remGRM"="remGRM",
+								 						 						 "remGP (aspatial)"="remGP"
+								 						 					    ), selected="remPois"),
+
 								 ),
 								 actionButton(inputId="Run_model", label="Fit Model")
 		,width=4),

@@ -36,17 +36,9 @@ removals<-reactive({
 #passive detections
 detections<-reactive({
 	if(is.null(input$detections))
-	{detections<-eradicate::san_nic_rem$y1} else
+	{detections<-eradicate::san_nic_rem$ym} else
 	{detections<-read_csv(input$detections$datapath) }
 	detections
-})
-
-#ids of traps with passive monitoring
-mtraps<-reactive({
-	if(is.null(input$mtraps))
-	{mtraps<-eradicate::san_nic_rem$cells} else
-	{mtraps<-read_csv(input$mtraps$datapath) }
-	mtraps
 })
 
 #how many nights per primary session?
@@ -85,9 +77,6 @@ observeEvent(input$Plot_removal, {
 ModToFit<-reactive({
 	input$Model
 })
-K<-reactive({
-	input$K
-})
 
 #fit the selected model to the data.
 fit_mod<-reactive({
@@ -95,19 +84,27 @@ traps<- traps()
 rast<-hab_raster()
 removals<-removals()
 detections<-detections()
-mtraps<-mtraps()
 nights<-nights()
 buff<-buff()
 modname<-ModToFit()
-K<-K()
 #prep the data
 habvals<-raster::extract(rast, traps, buffer=buff)
 habmean<- sapply(habvals, function(x) mean(x, na.rm=T))
 site.data<- cbind(traps, habmean)
-if(modname== "remPoisM" ) {emf<-eFrameRM(removals, detections, mtraps, nights, type="removal", siteCovs = site.data)
-	                         model<-eradicate::remPoisM(~habmean, ~1, K=K, data=emf)} else
-if(modname== "remPois"  ) {emf<- eFrameR(removals, type="removal", siteCovs = site.data)
-                           model<- remPois(~habmean, ~1, data=emf)}
+if(modname== "remPois" ) {emf<-eFrameR(removals,type="removal", siteCovs = site.data)
+	                         model<-eradicate::remPois(~habmean, ~1, data=emf)} else
+if(modname== "remGR"  ) {emf<- eFrameGR(removals,  numPrimary=1, type="removal", siteCovs = site.data)
+                           model<- eradicate::remGR(~habmean, ~1, ~1, data=emf)} else
+if(modname== "remGRM"  ) {emf<- eFrameGRM(removals, detections, numPrimary=1, type="removal", siteCovs = site.data)
+                           	model<- eradicate::remGRM(~habmean, ~1, ~1, ~1, data=emf)} else
+if(modname== "remGP"  ) {catch<- apply(removals,2,sum)
+                          effort<- rep(nrow(removals), length(catch))
+                         # extra monitoring/effort data
+                          index<- apply(detections,2,sum)
+                          ieffort<- rep(nrow(detections), length(index))
+                          emf<- eFrameGP(catch, effort, index, ieffort)
+                          model<- remGP(emf)
+}
 model
 })
 
@@ -147,13 +144,12 @@ out
 abund_tab<-reactive({
 	modname<-ModToFit()
 	mod<-fit_mod()
-	buff<-buff()  #buffer zone radius
 	ests<-calcN(mod)
 	Nhat<-ests$Nhat
 	Nresid<-ests$Nresid
 	out<-bind_rows(Nhat, Nresid)
-	out<-data.frame("Parameter"=c("Nhat", "Nresid"), out)
-	out
+	out<-data.frame(out)#data.frame("Parameter"=c("Nhat", "Nresid"), out)
+  out
 })
 
 

@@ -2,22 +2,21 @@
 #relies on functions in eradication package
 library(shiny)
 library(shinycssloaders)
-library(knitr)
 library(raster)
 library(sf)
-library(ggspatial)
 library(tidyverse)
 library(R.utils)
-library(kableExtra)
 library(leaflet)
 library(rgdal)
 library(rgeos)
 library(eradicate)
+library(xtable)
 
 ##DEFINE THE USER INTERFACE################################################################################################
 ui<-fluidPage(
 	tags$head(
-		tags$style(HTML("hr {border-top: 1px solid #000000;}"))
+		tags$style(HTML("hr {border-top: 1px solid #000000;}",
+										".shiny-input-container {margin-bottom: -10px;}"))
 	),
 	titlePanel("Pre-implementation Monitoring"),
 	sidebarLayout(
@@ -26,11 +25,13 @@ ui<-fluidPage(
 								 					multiple=TRUE,  accept=c('.shp','.dbf','.sbn','.sbx','.shx','.prj')),
 								 fileInput(inputId="habitat_rasters", label="Habitat raster (.tif, .asc)", accept=c(".tif", ".asc")),
 								 fileInput(inputId="detectors", label="Detector locations (.csv)", accept=c("text/csv", ".csv")),
-								 fileInput(inputId="counts", label="Detection histories (.csv)", accept=c("text/csv", ".csv")),
+								 fileInput(inputId="counts", label="Detection histories or counts (.csv)", accept=c("text/csv", ".csv")),
 								 hr(),
-								 actionButton("Plot_design", "Plot design"),
-								 sliderInput("Habitat_opacity", "Habitat opacity", min=0, max=1, value=0.2, step=0.1),
-								 numericInput("habitat_radius", "Habitat sampling radius", min=0, max=NA, value=500, step=50),
+								 fluidRow(
+								 column(3, actionButton("Plot_design", "Plot map")),
+								 column(3, numericInput("habitat_radius", "Raster sampling radius", min=0, max=NA, value=500, step=50)),
+								 column(5, sliderInput("Habitat_opacity", "Raster opacity", min=0, max=1, value=0.2, step=0.1))
+								 ),
 								 hr(),
 								 #SELECT APPROPRIATE MODEL --------------------------------------------------------------------------
 								 fluidRow(
@@ -41,10 +42,10 @@ ui<-fluidPage(
 								 						 					    ), selected="RN")),
 								 conditionalPanel("input.Model!='Occ'",
 								 column(2, numericInput(inputId="K", label="K", min=1, max=NA, value=50, step=1),
-								           checkboxInput("EstDens", "Estimate Density", value=FALSE)))
+								           checkboxInput("EstDens", "Estimate Density", value=FALSE))),
+								 column(2, actionButton(inputId="Run_model", label="Fit Model") ) ,width=4, fluid=TRUE)
 								 ),
-								 actionButton(inputId="Run_model", label="Fit Model")
-		,width=4),
+
 		mainPanel(
 			tabsetPanel(id="maintabs", type="tabs",
 									#Map tab

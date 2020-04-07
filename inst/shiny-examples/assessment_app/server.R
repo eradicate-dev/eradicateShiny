@@ -57,7 +57,7 @@ observeEvent(input$Plot_design, {
 #disable density if using occupancy model
 observe(if(input$Model!="Occ") {
 	updateCheckboxInput(session, "EstDens", value=FALSE)
-	updateNumericInput(session, "K", value=50)
+	updateNumericInput(session, "K", value=5*max(counts()) + 50) #sets default value for K
 })
 
 
@@ -119,14 +119,6 @@ abund_tab<-reactive({
 	out
 })
 
-#caption for abundance/occ table not working yet
-#abund_cap<-reactive({
-#	if(ModToFit()=="Occ") {capstring="Occupancy estimate"} else
-#		if(EstDens()) {capstring = "Density estimate"} else
-#		{capstring="Abundance estimate"}
-#	captstring
-#})
-
 ###########################################################################################
 #
 #   --- RENDER THE OUTPUTS  ----
@@ -143,7 +135,10 @@ req(input$Run_model)
 output$abundance_table<-renderTable({
 	req(input$Run_model)
 	abund_tab()
-}, row.names=FALSE, width=300, caption="Caption", caption.placement = "top")
+}, row.names=FALSE, width=300,
+   caption="Real estimates",
+caption.placement = getOption("xtable.caption.placement", "top"),
+caption.width = getOption("xtable.caption.width", NULL))
 
 #Render a map of the input data
 output$map<-renderLeaflet({

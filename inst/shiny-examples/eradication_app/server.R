@@ -54,6 +54,10 @@ habopacity<-reactive({
 	input$Habitat_opacity
 })
 
+K<-reactive({
+	input$K
+})
+
 #############################################################
 #  -- respond to UI events
 #############################################################
@@ -69,6 +73,9 @@ observeEvent(input$Plot_design, {
 observeEvent(input$Plot_removal, {
 	updateTabsetPanel(session, "maintabs",
 										selected = "panel3")
+})
+observe(if(input$Model!="RemPois" & input$Model!="RemGP") {
+	updateNumericInput(session, "K", value=5*max(detections()) + 50) #sets default value for K on model select
 })
 
 #############################################################
@@ -87,6 +94,7 @@ detections<-detections()
 nights<-nights()
 buff<-buff()
 modname<-ModToFit()
+K<-K()
 #prep the data
 habvals<-raster::extract(rast, traps, buffer=buff)
 habmean<- sapply(habvals, function(x) mean(x, na.rm=T))
@@ -94,9 +102,9 @@ site.data<- cbind(traps, habmean)
 if(modname== "remPois" ) {emf<-eFrameR(removals,type="removal", siteCovs = site.data)
 	                         model<-eradicate::remPois(~habmean, ~1, data=emf)} else
 if(modname== "remGR"  ) {emf<- eFrameGR(removals,  numPrimary=1, type="removal", siteCovs = site.data)
-                           model<- eradicate::remGR(~habmean, ~1, ~1, data=emf)} else
+                           model<- eradicate::remGR(~habmean, ~1, ~1, data=emf, K=K)} else
 if(modname== "remGRM"  ) {emf<- eFrameGRM(removals, detections, numPrimary=1, type="removal", siteCovs = site.data)
-                           	model<- eradicate::remGRM(~habmean, ~1, ~1, ~1, data=emf)} else
+                           	model<- eradicate::remGRM(~habmean, ~1, ~1, ~1, data=emf, K=K)} else
 if(modname== "remGP"  ) {catch<- apply(removals,2,sum)
                           effort<- rep(nrow(removals), length(catch))
                          # extra monitoring/effort data

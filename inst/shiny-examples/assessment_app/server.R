@@ -42,6 +42,19 @@ habopacity<-reactive({
 	input$Habitat_opacity
 })
 
+###################################################################################################
+#reactive function for habitat value extraction from raster
+###################################################################################################
+habmean<-reactive({
+	rast<-hab_raster()
+	buff<-buff()
+	dets<-detectors()
+	habvals<-raster::extract(rast, dets, buffer=buff)
+	habmean<- sapply(habvals, function(x) mean(x, na.rm=T))
+	habmean
+})
+
+
 #############################################################
 #  -- respond to UI events
 #############################################################
@@ -60,9 +73,8 @@ observe(if(input$Model!="Occ") {
 	updateNumericInput(session, "K", value=5*max(counts()) + 50) #sets default value for K
 })
 
-
 #############################################################
-#  -- Model fitting options
+#  -- Model fitting
 #############################################################
 ModToFit<-reactive({
 	input$Model
@@ -77,14 +89,10 @@ EstDens<-reactive({
 #fit the selected model to the data.
 fit_mod<-reactive({
 dets<- detectors()
-rast<-hab_raster()
 cnts<-counts()
-buff<-buff()
 modname<-ModToFit()
 K<-K()
-#prep the data
-habvals<-raster::extract(rast, dets, buffer=buff)
-habmean<- sapply(habvals, function(x) mean(x, na.rm=T))
+habmean<-habmean()
 site.data<- cbind(dets, habmean)
 emf<-   eradicate::eFrame(cnts, siteCovs = site.data)
 if(modname== "Occ" ) {model<-eradicate::occuM(~habmean, ~1, data=emf)} else
@@ -93,7 +101,7 @@ if(modname== "Nmix") {model<-eradicate::nmix(~habmean, ~1, K=K, data=emf)}
 model
 })
 
-#summary table of parameter estimates
+#summary table of parameter estimates for selected model
 summary_tab<-reactive({
 mod<-fit_mod()
 out<-summary(mod)
@@ -104,7 +112,7 @@ data.frame(out)
 out
 })
 
-#summary table of abundance estimates
+#summary table of abundance estimates conditional on selected model
 abund_tab<-reactive({
 	modname<-ModToFit()
 	mod<-fit_mod()
@@ -166,7 +174,8 @@ output$map<-renderLeaflet({
 		addLayersControl(baseGroups=c("OSM (default)", "ESRI Topo", "ESRI Satellite"),
 										 overlayGroups = c("detectors", "detector buffer", "habitat raster"),
 										 options=layersControlOptions(collapsed=FALSE))
-})
+}
+)
 
 }
 

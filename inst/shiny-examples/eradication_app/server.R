@@ -77,6 +77,19 @@ observeEvent(input$Plot_removal, {
 observe(if(input$Model!="RemPois" & input$Model!="RemGP") {
 	updateNumericInput(session, "K", value=5*max(detections()) + 50) #sets default value for K on model select
 })
+###################################################################################################
+#reactive function for habitat value extraction from raster
+###################################################################################################
+habmean<-reactive({
+	rast<-hab_raster()
+	buff<-buff()
+	traps<-traps()
+	habvals<-raster::extract(rast, traps, buffer=buff)
+	habmean<- sapply(habvals, function(x) mean(x, na.rm=T))
+	habmean
+})
+
+
 
 #############################################################
 #  -- Model fitting options
@@ -88,16 +101,15 @@ ModToFit<-reactive({
 #fit the selected model to the data.
 fit_mod<-reactive({
 traps<- traps()
-rast<-hab_raster()
 removals<-removals()
 detections<-detections()
 nights<-nights()
-buff<-buff()
 modname<-ModToFit()
 K<-K()
 #prep the data
-habvals<-raster::extract(rast, traps, buffer=buff)
-habmean<- sapply(habvals, function(x) mean(x, na.rm=T))
+#habvals<-raster::extract(rast, traps, buffer=buff)
+#habmean<- sapply(habvals, function(x) mean(x, na.rm=T))
+habmean<-habmean()
 site.data<- cbind(traps, habmean)
 if(modname== "remPois" ) {emf<-eFrameR(removals,type="removal", siteCovs = site.data)
 	                         model<-eradicate::remPois(~habmean, ~1, data=emf)} else

@@ -1,17 +1,5 @@
-#this is the app for pre-eradication assessment using occupancy, n-mixture, royle-nichols or REST models
-#relies on functions in eradication package
-library(shiny)
-library(shinycssloaders)
-library(raster)
-library(sf)
-library(tidyverse)
-library(R.utils)
-library(leaflet)
-library(rgdal)
-library(rgeos)
-library(eradicate)
-library(xtable)
-
+#this is the app for monitoring eradication assessment using a variety of removal models
+#relies on the functions in the eradicate package
 ##DEFINE THE USER INTERFACE################################################################################################
 ui<-fluidPage(
 	tags$head(

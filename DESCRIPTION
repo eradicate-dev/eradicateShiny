@@ -22,5 +22,5 @@ Depends:
     rgeos,
     xtable
 VignetteBuilder: knitr
-URL: https://github.com/scrogster/eradicateShiny
-BugReports: https://github.com/scrogster/eradicateShiny/issues
+URL: https://github.com/eradicate-dev/eradicateShiny
+BugReports: https://github.com/eradicate-dev/eradicateShiny/issues

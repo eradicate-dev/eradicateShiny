@@ -29,9 +29,10 @@ ui<-fluidPage(
 								 						 	            "N-mixture"="Nmix"
 								 						 					    ), selected="RN")),
 								 conditionalPanel("input.Model!='Occ'",
-								 column(2, numericInput(inputId="K", label="K", min=1, max=NA, value=50, step=1),
-								           checkboxInput("EstDens", "Estimate Density", value=FALSE))),
-								 column(2, actionButton(inputId="Run_model", label="Fit model") ) ,width=4, fluid=TRUE)
+								 column(2, numericInput(inputId="K", label="K", min=1, max=NA, value=50, step=1)
+								          )),
+								 column(2, actionButton(inputId="Run_model", label="Fit model"),
+								 			 actionButton("EstDens", "Estimate Density Surface")) ,width=4, fluid=TRUE)
 								 ),
 
 		mainPanel(

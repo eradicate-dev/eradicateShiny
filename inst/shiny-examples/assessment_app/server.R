@@ -67,9 +67,12 @@ observeEvent(input$Plot_design, {
 	updateTabsetPanel(session, "maintabs",
 										selected = "panel1")
 })
+observeEvent(input$EstDens, {
+	updateTabsetPanel(session, "maintabs",
+										selected = "panel1")
+})
 #disable density if using occupancy model
 observe(if(input$Model!="Occ") {
-	updateCheckboxInput(session, "EstDens", value=FALSE)
 	updateNumericInput(session, "K", value=5*max(counts()) + 50) #sets default value for K
 })
 
@@ -116,15 +119,32 @@ out
 abund_tab<-reactive({
 	modname<-ModToFit()
 	mod<-fit_mod()
-	EstDens<-EstDens() #estimate density?
 	buff<-buff()  #buffer zone radius
-	if(EstDens) { buffarea<-(pi*buff*buff)/(1000^2) } else {buffarea=1}   #area in km^2 around detector
 	#If occupancy, no buffer offset applies, else offset estimate with buffer area
-	if(modname=="Occ") {Nhat<-calcN(mod)} else {Nhat<-calcN(mod, off.set=log(buffarea))}
+	if(modname=="Occ") {Nhat<-calcN(mod)} else {Nhat<-calcN(mod)}
   if(modname=="Occ"){out<-Nhat$Occ} else
   if(modname=="RN"){out<-Nhat$Nhat} else
   if(modname=="Nmix"){out<-Nhat$Nhat}
 	out
+})
+
+DensRast<-reactive({
+	modname<-ModToFit()
+	mod<-fit_mod()
+	buff<-buff()  #buffer zone radius
+	rast<-hab_raster()
+	bound<-site_bound()
+#code in here to calculate density/occ surface
+	filt<-focalWeight(x=rast, d=buff, type='circle')
+	rast2<-focal(x=rast, w=filt,fun=sum, na.rm=TRUE, pad=TRUE)
+	vals<-getValues(rast2)
+	coeffs<-mod$state$estimates
+	preds.lin<-vals*coeffs[2] + coeffs[1]
+	if(modname=="Occ"){preds<-plogis(preds.lin)} else
+	                  {preds<-exp(preds.lin)}
+	predras<-raster(rast)
+	predras[]<-preds
+	predras<-mask(predras, bound)
 })
 
 ###########################################################################################
@@ -159,7 +179,7 @@ output$map<-renderLeaflet({
 	detectors<-st_as_sf(detectors(), coords = c("x", "y"), crs=st_crs(bound))
 	detector_buff<-st_buffer(detectors, dist=buff())
 	habras<-hab_raster()
-	crs(habras)<-crs(bound) #assume same crs as region boundary
+  crs(habras)<-crs(bound) #assume same crs as region boundary
 	pal <- colorNumeric("viridis", values(habras), na.color = "transparent")
 	leaflet() %>%
 		addTiles(group="OSM") %>%
@@ -176,6 +196,31 @@ output$map<-renderLeaflet({
 										 options=layersControlOptions(collapsed=FALSE))
 }
 )
+
+observe({
+	req(input$EstDens)
+	req(input$boundary)
+	req(input$Habitat_opacity)
+	req(input$Run_model)
+	bound<-site_bound()
+	modname<-ModToFit()
+	if(modname=="Occ"){leglab<-"Pr(Occ)"} else {leglab<-"Density"}
+	DensRast <- DensRast()
+	crs(DensRast)<-crs(bound)
+	pal <- colorNumeric("viridis", values(DensRast), na.color = "transparent")
+	leafletProxy("map") %>%
+		clearImages() %>%
+		clearControls() %>%
+		addRasterImage(projectRaster(DensRast, crs="+init=epsg:4326", method="ngb"), colors=pal,
+							opacity=habopacity(), group="density raster") %>%
+		addLegend(position="bottomright", pal=pal, bins=6, title=leglab, values=values(DensRast)) %>%
+		addLayersControl(baseGroups=c("OSM (default)", "ESRI Topo", "ESRI Satellite"),
+										 overlayGroups = c("detectors", "detector buffer", "habitat raster", "density raster"),
+										 options=layersControlOptions(collapsed=FALSE)) %>%
+		hideGroup(c("habitat raster","detector buffer", "detectors"))
+})
+
+
 
 }
 

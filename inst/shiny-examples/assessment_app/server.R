@@ -171,11 +171,9 @@ caption.width = getOption("xtable.caption.width", NULL))
 
 #download the density raster
 output$downloadraster <- downloadHandler(
-	filename = "./density_raster.tif",
+	filename = "density_raster.tif",
 	content = function(file) {
-		writeRaster(DensRast(), "./density_raster.tif", format="Gtiff", overwrite=TRUE)
-		flist <- list.files("./","^density_raster.tif$", full.names = TRUE) #flist will get the path to the temporary
-		file.copy(flist, file)
+		writeRaster(DensRast(), file, format="GTiff", overwrite=TRUE)
 	}, contentType = "image/tif"
 )
 

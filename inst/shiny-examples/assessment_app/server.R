@@ -145,6 +145,7 @@ DensRast<-reactive({
 	predras<-raster(rast)
 	predras[]<-preds
 	predras<-mask(predras, bound)
+	predras
 })
 
 ###########################################################################################
@@ -167,6 +168,16 @@ output$abundance_table<-renderTable({
    caption="Real estimates",
 caption.placement = getOption("xtable.caption.placement", "top"),
 caption.width = getOption("xtable.caption.width", NULL))
+
+#download the density raster
+output$downloadraster <- downloadHandler(
+	filename = "./density_raster.tif",
+	content = function(file) {
+		writeRaster(DensRast(), "./density_raster.tif", format="Gtiff", overwrite=TRUE)
+		flist <- list.files("./","^density_raster.tif$", full.names = TRUE) #flist will get the path to the temporary
+		file.copy(flist, file)
+	}, contentType = "image/tif"
+)
 
 #Render a map of the input data
 output$map<-renderLeaflet({

@@ -4,7 +4,7 @@
 ui<-fluidPage(
 	tags$head(
 		tags$style(HTML("hr {border-top: 1px solid #000000;}",
-										".shiny-input-container {margin-bottom: -10px;}"))
+										".shiny-input-container {margin-bottom: -15px; margin-top: -15px}"))
 	),
 	titlePanel("Pre-implementation Monitoring"),
 	sidebarLayout(
@@ -14,8 +14,11 @@ ui<-fluidPage(
 								 																						 "Royle-Nichols"="RN",
 								 																						 "N-mixture"="Nmix",
 								 																						 "REST"="REST"
-								 																), selected="RN"))),
+								 																), selected="RN")),
+								 				 conditionalPanel("input.Model!='Occ' & input.Model!='REST'",
+								 				 column(2, numericInput(inputId="K", label="K", min=1, max=NA, value=50, step=1)))),
 								 hr(),
+								 wellPanel(
 								 #THESE ARE THE INPUTS FOR EVERYTHING EXCEPT REST----------------------------------------------------
 								 fileInput(inputId="boundary", label="Region boundary (.shp)",
 								 					multiple=TRUE,  accept=c('.shp','.dbf','.sbn','.sbx','.shx','.prj')),
@@ -30,7 +33,13 @@ ui<-fluidPage(
 								 fileInput(inputId="stayREST", label="Stay (.csv)", accept=c("text/csv", ".csv")),
 								 fileInput(inputId="censREST", label="Censored (.csv)", accept=c("text/csv", ".csv")),
 								 fileInput(inputId="activeREST", label="Active (.csv)", accept=c("text/csv", ".csv")),
-								 numericInput(inputId="areaREST", label="Area of camera viewshed", value=2.67e-06, min=0)
+								 fluidRow(
+								 column(3,
+								      numericInput(inputId="areaREST", label="Area of camera viewshed", value=2.67, min=0)),
+								 column(3,
+								 			selectInput(inputId="viewshedMultiplier", label="Viewshed area multiplier",
+								 									choices=c("1"=1,"10^-3"=10e-3, "10^-6"=10e-6, "10^-9"=10e-9), selected=10e-6))
+								 )),
 								 ),
 								 hr(),
 								 #CONTROLS FOR THE MAP DISPLAY-----------------------------------------------------------------------
@@ -42,12 +51,9 @@ ui<-fluidPage(
 								 hr(),
 								 #CONTROL TO FIT MODEL ------------------------------------------------------------------------------
 								 fluidRow(
-								 conditionalPanel("input.Model!='Occ'",
-								 column(2, numericInput(inputId="K", label="K", min=1, max=NA, value=50, step=1)),
-
-								 column(2, actionButton(inputId="Run_model", label="Fit model"),
+								 column(3, actionButton(inputId="Run_model", label="Fit model"),
 								 			     actionButton("EstDens", "Estimate Density Surface"),
-								 			     downloadButton("downloadraster", "Download Density Raster")) ,width=4, fluid=TRUE))
+								 			     downloadButton("downloadraster", "Download Density Raster")) ,width=4, fluid=TRUE)
 								 ),
 
 		mainPanel(

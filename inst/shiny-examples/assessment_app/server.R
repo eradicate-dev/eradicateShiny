@@ -62,6 +62,10 @@ areaREST<-reactive({
   input$areaREST
 })
 
+viewshedMultiplier<-reactive({
+	input$viewshedMultiplier
+})
+
 #habitat radius user input-----------------------------------------------------------------------------
 buff<-reactive({
  input$habitat_radius
@@ -123,12 +127,14 @@ fit_mod<-reactive({
 	dets<- detectors()
 	cnts<-counts()
 	habmean<-habmean()
+	A<-areaREST()
+	Amult<-viewshedMultiplier()
 	K<-K()
 modname<-ModToFit()
 site.data<- cbind(dets, habmean)
 #format the data appropriately
 if(modname!= "REST"){emf<- eradicate::eFrame(cnts, siteCovs = site.data)} else
-                    {emf<- eFrameREST(countREST(), stayREST(), censREST(), areaREST(), activeREST(), siteCovs = site.data)}
+                    {emf<- eFrameREST(countREST(), stayREST(), censREST(), A*Amult, activeREST(), siteCovs = site.data)}
 #fit the appropriate model
 if(modname== "Occ" ) {model<-eradicate::occuM(~habmean, ~1, data=emf)}       else
 if(modname== "RN"  ) {model<-eradicate::occuRN(~habmean, ~1, K=K, data=emf)} else

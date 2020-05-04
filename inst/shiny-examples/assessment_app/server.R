@@ -33,7 +33,32 @@ counts<-reactive({
 		counts
 	})
 
-#habitat radius user input
+#special reactive inputs for the REST model-----------------------------------------------------------
+countREST<-reactive({
+	if(is.null(input$countREST))
+		{countREST<-eradicate::san_nic_rest$y} else
+		{countREST<-read_csv(input$countREST$datapath)}
+})
+
+stayREST<-reactive({
+	if(is.null(input$stayREST))
+	{stayREST<-eradicate::san_nic_rest$stay} else
+	{stayREST<-read_csv(input$stayREST$datapath)}
+})
+
+censREST<-reactive({
+	if(is.null(input$censREST))
+	{censREST<-eradicate::san_nic_rest$cens} else
+	{censREST<-read_csv(input$censREST$datapath)}
+})
+
+activeREST<-reactive({
+	if(is.null(input$activeREST))
+	{activeREST<-eradicate::san_nic_rest$active_hours} else
+	{activeREST<-read_csv(input$activeREST$datpath)}
+})
+
+#habitat radius user input-----------------------------------------------------------------------------
 buff<-reactive({
  input$habitat_radius
 })

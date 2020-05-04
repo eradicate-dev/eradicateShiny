@@ -4,18 +4,35 @@
 ui<-fluidPage(
 	tags$head(
 		tags$style(HTML("hr {border-top: 1px solid #000000;}",
-										".shiny-input-container {margin-bottom: -10px;}"))
+										".shiny-input-container {margin-bottom: -15px; margin-top: -15px}"))
 	),
 	titlePanel("Eradication Monitoring"),
 	sidebarLayout(
 		sidebarPanel(#INPUT THE REGION, detector and detections FILEs ---------------------------------------------------
+								 fluidRow(
+								 	column(5,
+								 				 radioButtons(inputId="Model", label="Select model",
+								 				 						 choices=list("remPois"="remPois",
+								 				 						 						 "remGR"="remGR",
+								 				 						 						 "remGRM"="remGRM",
+								 				 						 						 "remGP (aspatial)"="remGP"
+								 				 						 ), selected="remPois")),
+								 	#conditionally take input for parameter K, depending on model type.
+								 	conditionalPanel("input.Model!='remPois'&&input.Model!='remGP'",
+								 									 column(2, numericInput(inputId="K", label="K", min=1, max=NA, value=50, step=1)
+								 									 ))),
+								 hr(),
+								 wellPanel(
 								 fileInput(inputId="boundary", label="Region boundary (.shp)",
 								 					multiple=TRUE,  accept=c('.shp','.dbf','.sbn','.sbx','.shx','.prj')),
 								 fileInput(inputId="habitat_rasters", label="Habitat raster (.tif, .asc)", accept=c(".tif", ".asc")),
 								 fileInput(inputId="traps", label="Trap locations (.csv)", accept=c("text/csv", ".csv")),
 								 fileInput(inputId="removals", label="Removal histories (.csv)", accept=c("text/csv", ".csv")),
 								 fileInput(inputId="detections", label="Detection histories (.csv)", accept=c("text/csv", ".csv")),
-								 numericInput("nights", "Nights per primary session", min=0, max=NA, value=10, step=1),
+								 fluidRow(
+								 	column(4,
+								 numericInput("nights", "Nights per primary session", min=0, max=NA, value=10, step=1)))
+								 ),
 								 hr(),
 								 fluidRow(
 								 	column(3, actionButton("Plot_design", "Plot map"), actionButton("Plot_removal", "Plot removals")),
@@ -25,20 +42,7 @@ ui<-fluidPage(
 								 hr(),
 								 #SELECT APPROPRIATE MODEL --------------------------------------------------------------------------
 								 fluidRow(
-								 column(3,
-								 radioButtons(inputId="Model", label="Select model",
-								 						 choices=list("remPois"="remPois",
-								 						 						 "remGR"="remGR",
-								 						 						 "remGRM"="remGRM",
-								 						 						 "remGP (aspatial)"="remGP"
-								 						 					    ), selected="remPois")),
-								 #conditionally take input for parameter K, depending on model type.
-								 conditionalPanel("input.Model!='remPois'&&input.Model!='remGP'",
-								 								 column(2, numericInput(inputId="K", label="K", min=1, max=NA, value=50, step=1)
-								 								 			 )),
-								 column(2, actionButton(inputId="Run_model", label="Fit model")))
-
-		,width=4),
+								 column(2, actionButton(inputId="Run_model", label="Fit model")) ,width=4, fluid=TRUE)),
 		mainPanel(
 			tabsetPanel(id="maintabs", type="tabs",
 									#Map tab

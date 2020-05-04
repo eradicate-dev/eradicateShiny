@@ -58,6 +58,10 @@ activeREST<-reactive({
 	{activeREST<-read_csv(input$activeREST$datpath)}
 })
 
+areaREST<-reactive({
+  input$areaREST
+})
+
 #habitat radius user input-----------------------------------------------------------------------------
 buff<-reactive({
  input$habitat_radius
@@ -116,16 +120,20 @@ EstDens<-reactive({
 
 #fit the selected model to the data.
 fit_mod<-reactive({
-dets<- detectors()
-cnts<-counts()
+	dets<- detectors()
+	cnts<-counts()
+	habmean<-habmean()
+	K<-K()
 modname<-ModToFit()
-K<-K()
-habmean<-habmean()
 site.data<- cbind(dets, habmean)
-emf<-   eradicate::eFrame(cnts, siteCovs = site.data)
-if(modname== "Occ" ) {model<-eradicate::occuM(~habmean, ~1, data=emf)} else
+#format the data appropriately
+if(modname!= "REST"){emf<- eradicate::eFrame(cnts, siteCovs = site.data)} else
+                    {emf<- eFrameREST(countREST(), stayREST(), censREST(), areaREST(), activeREST(), siteCovs = site.data)}
+#fit the appropriate model
+if(modname== "Occ" ) {model<-eradicate::occuM(~habmean, ~1, data=emf)}       else
 if(modname== "RN"  ) {model<-eradicate::occuRN(~habmean, ~1, K=K, data=emf)} else
-if(modname== "Nmix") {model<-eradicate::nmix(~habmean, ~1, K=K, data=emf)}
+if(modname== "Nmix") {model<-eradicate::nmix(~habmean, ~1, K=K, data=emf)}   else
+if(modname== "REST") {model<-eradicate::REST(~habmean, data=emf)}
 model
 })
 
@@ -149,7 +157,8 @@ abund_tab<-reactive({
 	if(modname=="Occ") {Nhat<-calcN(mod)} else {Nhat<-calcN(mod)}
   if(modname=="Occ"){out<-Nhat$Occ} else
   if(modname=="RN"){out<-Nhat$Nhat} else
-  if(modname=="Nmix"){out<-Nhat$Nhat}
+  if(modname=="Nmix"){out<-Nhat$Nhat} else
+  if(modname=="REST"){out<-Nhat$Nhat}
 	out
 })
 

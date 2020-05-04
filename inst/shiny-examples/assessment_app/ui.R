@@ -29,8 +29,8 @@ ui<-fluidPage(
 								 fileInput(inputId="countREST", label="Detection histories or counts (.csv)", accept=c("text/csv", ".csv")),
 								 fileInput(inputId="stayREST", label="Stay (.csv)", accept=c("text/csv", ".csv")),
 								 fileInput(inputId="censREST", label="Censored (.csv)", accept=c("text/csv", ".csv")),
-								 fileInput(inputId="activeREST", label="Active (.csv)", accept=c("text/csv", ".csv"))
-								 #area, (calc from boundary)
+								 fileInput(inputId="activeREST", label="Active (.csv)", accept=c("text/csv", ".csv")),
+								 numericInput(inputId="areaREST", label="Area of camera viewshed", value=2.67e-06, min=0)
 								 ),
 								 hr(),
 								 #CONTROLS FOR THE MAP DISPLAY-----------------------------------------------------------------------

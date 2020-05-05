@@ -52,11 +52,7 @@ censREST<-reactive({
 	{censREST<-read_csv(input$censREST$datapath)}
 })
 
-activeREST<-reactive({
-	if(is.null(input$activeREST))
-	{activeREST<-eradicate::san_nic_rest$active_hours} else
-	{activeREST<-read_csv(input$activeREST$datpath)}
-})
+
 
 areaREST<-reactive({
   input$areaREST
@@ -73,6 +69,10 @@ buff<-reactive({
 
 habopacity<-reactive({
 	input$Habitat_opacity
+})
+
+activeREST<-reactive({
+	input$activeREST
 })
 
 ###################################################################################################
@@ -104,7 +104,7 @@ observeEvent(input$EstDens, {
 	updateTabsetPanel(session, "maintabs",
 										selected = "panel1")
 })
-#disable density if using occupancy model
+#disable K if using occupancy model
 observe(if(input$Model!="Occ") {
 	updateNumericInput(session, "K", value=5*max(counts()) + 50) #sets default value for K
 })
@@ -225,17 +225,20 @@ output$map<-renderLeaflet({
 	req(input$habitat_radius)
 	#set up and tranform site boundary
 	bound<-site_bound()
+	opacity<-habopacity()
+	transparency<-1-opacity
 	detectors<-st_as_sf(detectors(), coords = c("x", "y"), crs=st_crs(bound))
 	detector_buff<-st_buffer(detectors, dist=buff())
 	habras<-hab_raster()
   crs(habras)<-crs(bound) #assume same crs as region boundary
-	pal <- colorNumeric("viridis", values(habras), na.color = "transparent")
+  habrasproj<-projectRaster(habras, crs="+init=epsg:4326", method="bilinear")
+	pal <- colorNumeric("viridis", values(habrasproj), na.color = "transparent")
 	leaflet() %>%
 		addTiles(group="OSM") %>%
 		addProviderTiles("Esri.WorldTopoMap", group="ESRI Topo") %>%
 		addProviderTiles("Esri.WorldImagery", group="ESRI Satellite") %>%
-  	addRasterImage(projectRaster(habras, crs="+init=epsg:4326", method="ngb"), colors=pal,
-  								 opacity=habopacity(), group="habitat raster") %>%
+  	addRasterImage(habrasproj, colors=pal,
+  								 opacity=transparency, group="habitat raster") %>%
 		addPolygons(data=st_transform(bound, "+init=epsg:4326"), weight=2, fill=FALSE) %>%
 		addCircleMarkers(data=st_transform(detectors, "+init=epsg:4326"), color="red", radius=1, group="detectors") %>%
 		addPolygons(data=st_transform(detector_buff, "+init=epsg:4326"), color="red", weight=1, group="detector buffer") %>%
@@ -255,21 +258,24 @@ observe({
 	modname<-ModToFit()
 	if(modname=="Occ"){leglab<-"Pr(Occ)"} else {leglab<-"Density"}
 	DensRast <- DensRast()
+	opacity<-habopacity()
+	transparency<-1-opacity
 	crs(DensRast)<-crs(bound)
-	pal <- colorNumeric("viridis", values(DensRast), na.color = "transparent")
+	DensRastProj<-projectRaster(DensRast, crs="+init=epsg:4326", method="bilinear")
+	pal <- colorNumeric("viridis", values(DensRastProj), na.color = "transparent")
 	leafletProxy("map") %>%
 		clearImages() %>%
 		clearControls() %>%
-		addRasterImage(projectRaster(DensRast, crs="+init=epsg:4326", method="ngb"), colors=pal,
-							opacity=habopacity(), group="density raster") %>%
+		addRasterImage(DensRastProj, colors=pal,
+							opacity=transparency, group="density raster") %>%
 		addLegend(position="bottomright", pal=pal, bins=6, title=leglab, values=values(DensRast)) %>%
 		addLayersControl(baseGroups=c("OSM (default)", "ESRI Topo", "ESRI Satellite"),
-										 overlayGroups = c("detectors", "detector buffer", "habitat raster", "density raster"),
+										 overlayGroups = c("detectors", "detector buffer", "density raster"),
 										 options=layersControlOptions(collapsed=FALSE)) %>%
 		hideGroup(c("habitat raster","detector buffer", "detectors"))
 })
 
 
 
-}
+} #end server
 

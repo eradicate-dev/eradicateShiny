@@ -16,7 +16,7 @@ ui<-fluidPage(
 								 																						 "REST"="REST"
 								 																), selected="RN")),
 								 				 conditionalPanel("input.Model!='Occ' & input.Model!='REST'",
-								 				 column(2, numericInput(inputId="K", label="K", min=1, max=NA, value=50, step=1)))),
+								 				 column(3, numericInput(inputId="K", label="K", min=1, max=NA, value=50, step=1)))),
 								 hr(),
 								 wellPanel(
 								 #THESE ARE THE INPUTS FOR EVERYTHING EXCEPT REST----------------------------------------------------
@@ -39,13 +39,14 @@ ui<-fluidPage(
 								        "csv containing staying times for REST model"),
 								 tipify(fileInput(inputId="censREST", label="Censored (.csv)", accept=c("text/csv", ".csv")),
 								       "csv containing censoring status for observations (REST model)"),
-								 tipify(fileInput(inputId="activeREST", label="Active (.csv)", accept=c("text/csv", ".csv")),
-								      "csv containing active hours for REST model"),
 								 fluidRow(
 								 	column(3,
+								 				 tipify(numericInput(inputId="activeREST", label="Active hours", value=24, min=0, max=24),
+								 				 			 "Number of hours per day active")),
+								 	column(4,
 								 		tipify(numericInput(inputId="areaREST", label="Area of camera viewshed", value=2.67),
 								 			 "Camera viewshed area (in km^2) - use multiplier argument to rescale as required")),
-								 column(3,
+								 column(5,
 								 			selectInput(inputId="viewshedMultiplier", label="Viewshed area multiplier",
 								 									choices=c("1"=1,"10^-3"=10e-3, "10^-6"=10e-6, "10^-9"=10e-9), selected=10e-6))
 								 )),
@@ -55,7 +56,7 @@ ui<-fluidPage(
 								 fluidRow(
 								 column(3, actionButton("Plot_design", "Plot map")),
 								 column(3, numericInput("habitat_radius", "Raster sampling radius", min=0, max=NA, value=500, step=50)),
-								 column(5, sliderInput("Habitat_opacity", "Raster opacity", min=0, max=1, value=0.2, step=0.2))
+								 column(5, sliderInput("Habitat_opacity", "Raster transparency", min=0, max=1, value=0.2, step=0.2))
 								 ),
 								 hr(),
 								 #CONTROL TO FIT MODEL ------------------------------------------------------------------------------
@@ -78,6 +79,6 @@ ui<-fluidPage(
 		)
 	),
 	bsTooltip("K", 'K parameter for Royle-Nichols and N-mixture models. The app calculates a sensible default. Large values will increase computation time significantly.')
-)
+) #end UI
 
 

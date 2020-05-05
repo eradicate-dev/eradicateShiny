@@ -20,22 +20,31 @@ ui<-fluidPage(
 								 hr(),
 								 wellPanel(
 								 #THESE ARE THE INPUTS FOR EVERYTHING EXCEPT REST----------------------------------------------------
-								 fileInput(inputId="boundary", label="Region boundary (.shp)",
+								 tipify(fileInput(inputId="boundary", label="Region boundary (.shp)",
 								 					multiple=TRUE,  accept=c('.shp','.dbf','.sbn','.sbx','.shx','.prj')),
-								 fileInput(inputId="habitat_rasters", label="Habitat raster (.tif, .asc)", accept=c(".tif", ".asc")),
-								 fileInput(inputId="detectors", label="Detector locations (.csv)", accept=c("text/csv", ".csv")),
+								 			   "Component files of an ESRI shapefile for the site boundary. The shapefile should be projected, not geographic"),
+								 tipify(fileInput(inputId="habitat_rasters", label="Habitat raster (.tif, .asc)", accept=c(".tif", ".asc")),
+								 			   "Raster file (.tif or .asc) of habitat quality in the same projection as the shapefile"),
+								 tipify(fileInput(inputId="detectors", label="Detector locations (.csv)", accept=c("text/csv", ".csv")),
+								 "csv file containing the x-y coordinates of the detector devices"),
 								 conditionalPanel(condition = "input.Model != 'REST'",
-								 fileInput(inputId="counts", label="Detection histories or counts (.csv)", accept=c("text/csv", ".csv"))
+								 tipify(fileInput(inputId="counts", label="Detection histories or counts (.csv)", accept=c("text/csv", ".csv")),
+								 "csv file containing detection histories at each detector device")
 								 ),
 								 #THESE ARE THE INPUTS FOR REST----------------------------------------------------------------------
 								 conditionalPanel(condition = "input.Model == 'REST'",
-								 fileInput(inputId="countREST", label="Detection histories or counts (.csv)", accept=c("text/csv", ".csv")),
-								 fileInput(inputId="stayREST", label="Stay (.csv)", accept=c("text/csv", ".csv")),
-								 fileInput(inputId="censREST", label="Censored (.csv)", accept=c("text/csv", ".csv")),
-								 fileInput(inputId="activeREST", label="Active (.csv)", accept=c("text/csv", ".csv")),
+								 tipify(fileInput(inputId="countREST", label="Detection histories or counts (.csv)", accept=c("text/csv", ".csv")),
+								        "csv file containing repeated counts at each detector device"),
+								 tipify(fileInput(inputId="stayREST", label="Stay (.csv)", accept=c("text/csv", ".csv")),
+								        "csv containing staying times for REST model"),
+								 tipify(fileInput(inputId="censREST", label="Censored (.csv)", accept=c("text/csv", ".csv")),
+								       "csv containing censoring status for observations (REST model)"),
+								 tipify(fileInput(inputId="activeREST", label="Active (.csv)", accept=c("text/csv", ".csv")),
+								      "csv containing active hours for REST model"),
 								 fluidRow(
-								 column(3,
-								      numericInput(inputId="areaREST", label="Area of camera viewshed", value=2.67, min=0)),
+								 	column(3,
+								 		tipify(numericInput(inputId="areaREST", label="Area of camera viewshed", value=2.67),
+								 			 "Camera viewshed area (in km^2) - use multiplier argument to rescale as required")),
 								 column(3,
 								 			selectInput(inputId="viewshedMultiplier", label="Viewshed area multiplier",
 								 									choices=c("1"=1,"10^-3"=10e-3, "10^-6"=10e-6, "10^-9"=10e-9), selected=10e-6))
@@ -68,7 +77,7 @@ ui<-fluidPage(
 													 ))
 		)
 	),
-	bsTooltip("K", "K parameter for Royle-Nichols and N-mixture models. The app calculates a sensible default. Large values will increase computation time significantly."),
+	bsTooltip("K", 'K parameter for Royle-Nichols and N-mixture models. The app calculates a sensible default. Large values will increase computation time significantly.')
 )
 
 

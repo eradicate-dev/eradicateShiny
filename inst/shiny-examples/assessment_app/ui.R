@@ -67,7 +67,8 @@ ui<-fluidPage(
 													    fluidRow( tableOutput(outputId="abundance_table") %>% withSpinner(type=4)),
 													 ))
 		)
-	)
+	),
+	bsTooltip("K", "K parameter for Royle-Nichols and N-mixture models. The app calculates a sensible default. Large values will increase computation time significantly."),
 )
 
 

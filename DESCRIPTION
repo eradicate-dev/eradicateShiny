@@ -12,6 +12,7 @@ RoxygenNote: 7.0.2
 Depends: 
     shiny,
     shinycssloaders,
+    shinyBS,
     sf,
     raster,
     tidyverse,

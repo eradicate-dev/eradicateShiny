@@ -2,11 +2,18 @@
 #relies on the functions in the eradicate package
 ##DEFINE THE USER INTERFACE################################################################################################
 ui<-fluidPage(
+	#splashscreen
+	use_waiter(),
+	waiter_show_on_load(html = '<p col="white">Loading eradicate...</p>', logo="logos.gif", color="#666666"),
 	tags$head(
 		tags$style(HTML("hr {border-top: 1px solid #000000;}",
 										".shiny-input-container {margin-bottom: -15px; margin-top: -15px}"))
 	),
-	titlePanel("Eradication Monitoring"),
+	titlePanel(title=div(
+		"eradicate:  eradication monitoring",
+		img(src="ari_logo.jpg", height=50, align="right"),
+		img(src="ciss_logo.jpg", height=50, align="right"),
+		img(src="manaki_logo.png", height=50, align="right"))),
 	sidebarLayout(
 		sidebarPanel(#INPUT THE REGION, detector and detections FILEs ---------------------------------------------------
 								 fluidRow(

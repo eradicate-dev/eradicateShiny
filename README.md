@@ -1,7 +1,7 @@
 eradicateShiny
 ========================
 
-This package is intended to provide a shiny front-end to the eradicate package.
+This package is intended to provide a shiny front-end to the eradicate package (https://github.com/eradicate-dev/eradicate).
 
 ## Installation
 
@@ -12,6 +12,4 @@ using
 
 ## bug reports
 
-The package is a work in progress so please use the [issue
-tracker](https://github.com/scrogster/eradicateShiny/issues) to report bugs
-in the code.
+The package is a work in progress so please use the [issue tracker](https://github.com/scrogster/eradicateShiny/issues) to report any bugs.

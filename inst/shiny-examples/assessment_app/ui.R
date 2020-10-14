@@ -30,8 +30,10 @@ ui<-fluidPage(
 								 tipify(fileInput(inputId="boundary", label="Region boundary (.shp)",
 								 					multiple=TRUE,  accept=c('.shp','.dbf','.sbn','.sbx','.shx','.prj')),
 								 			   "Component files of an ESRI shapefile for the site boundary. The shapefile should be projected, not geographic"),
-								 tipify(fileInput(inputId="habitat_rasters", label="Habitat raster (.tif, .asc)", accept=c(".tif", ".asc")),
-								 			   "Raster file (.tif or .asc) of habitat quality in the same projection as the shapefile"),
+								 tipify(fileInput(inputId="habitat_rasters", label="Habitat raster (.tif, .asc)",
+								 					multiple=TRUE, accept=c(".tif", ".asc")),
+								 			   "Raster files (.tif or .asc) of habitat covariates in the same projection as the boundary.
+								 			    All rasters must have the same extent and resolution"),
 								 tipify(fileInput(inputId="detectors", label="Detector locations (.csv)", accept=c("text/csv", ".csv")),
 								 "csv file containing the x-y coordinates of the detector devices"),
 								 conditionalPanel(condition = "input.Model != 'REST'",

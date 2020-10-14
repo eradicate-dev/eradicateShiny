@@ -4,7 +4,7 @@ server<-function(input, output, session){
 	Sys.sleep(3) # delay
 	waiter_hide() #hide splash screen
 #Boundary of study area, in a shapefile
-	site_bound<-reactive({
+site_bound<-reactive({
 		myshape<-input$boundary
 		dir<-dirname(myshape[1,4])
 		for ( i in 1:nrow(myshape)) {
@@ -15,9 +15,17 @@ server<-function(input, output, session){
 	})
 #raster of habitat suitability. default is San Nicolas
 hab_raster<-reactive({
-		if(is.null(input$habitat_raster))
-			{habras<-raster(system.file("extdata", "san_nic_habitat.tif", package="eradicate"))} else
-		  {habras<-raster(input$habitat_raster$datapath) }
+		if(is.null(input$habitat_rasters))
+			{habras<-stack(system.file("extdata", "san_nic_habitat.tif", package="eradicate"))
+			names(habras)<-"san_nic_habitat.tif" } else
+			{
+				#habras<-stack(input$habitat_raster$datapath)
+				nrast<-nrow(input$habitat_rasters)
+				rasts<-list()
+				for(i in 1:nrast){rasts[[i]] <- raster(input$habitat_rasters[i, 'datapath'])
+				                 names(rasts[[i]])<-gsub(".tif", "", input$habitat_rasters[i, 'name'])}
+				habras<-stack(rasts)
+			}
 		habras
 	})
 #csv of detectors. default is San Nicolas
@@ -235,20 +243,36 @@ output$map<-renderLeaflet({
 	habras<-hab_raster()
   crs(habras)<-crs(bound) #assume same crs as region boundary
   habrasproj<-projectRaster(habras, crs="+init=epsg:4326", method="bilinear")
-	pal <- colorNumeric("viridis", values(habrasproj), na.color = "transparent")
-	leaflet() %>%
+  nrast<-nlayers(habrasproj) #how many habitat rasters in the stack?
+	palvec<-c("viridis", "magma", "plasma", "inferno")
+  m<-leaflet() %>%
 		addTiles(group="OSM") %>%
 		addProviderTiles("Esri.WorldTopoMap", group="ESRI Topo") %>%
-		addProviderTiles("Esri.WorldImagery", group="ESRI Satellite") %>%
-  	addRasterImage(habrasproj, colors=pal,
-  								 opacity=transparency, group="habitat raster") %>%
-		addPolygons(data=st_transform(bound, "+init=epsg:4326"), weight=2, fill=FALSE) %>%
+		addProviderTiles("Esri.WorldImagery", group="ESRI Satellite")
+  # conditional addition of extra raster layers to the plot
+  count=1
+  while(count<=nrast) {
+  	m <- m %>% addRasterImage(habrasproj[[count]],
+  														colors=colorNumeric(palvec[count], values(habrasproj[[count]]), na.color = "#00000000"),
+  														opacity=transparency,
+  														group=names(habrasproj)[count]) %>%
+  		         addLegend(values=values(habrasproj[[count]]) ,
+  		         					pal = colorNumeric(palvec[count], values(habrasproj[[count]]), na.color = "#00000000"),
+  		         					title=names(habrasproj)[count], bins=5,
+  							        group = names(habrasproj)[count], position="bottomleft")
+
+  	count<-count+1
+  }
+  #adding additional decorations to the plot
+	m<-m %>%	addPolygons(data=st_transform(bound, "+init=epsg:4326"), weight=2, fill=FALSE) %>%
 		addCircleMarkers(data=st_transform(detectors, "+init=epsg:4326"), color="red", radius=1, group="detectors") %>%
 		addPolygons(data=st_transform(detector_buff, "+init=epsg:4326"), color="red", weight=1, group="detector buffer") %>%
-		addScaleBar("bottomleft", options=scaleBarOptions(imperial=FALSE, maxWidth = 200)) %>%
+		addScaleBar("bottomright", options=scaleBarOptions(imperial=FALSE, maxWidth = 200)) %>%
 		addLayersControl(baseGroups=c("OSM (default)", "ESRI Topo", "ESRI Satellite"),
-										 overlayGroups = c("detectors", "detector buffer", "habitat raster"),
-										 options=layersControlOptions(collapsed=FALSE))
+										 overlayGroups = c("detectors", "detector buffer", names(habrasproj)),
+										 options=layersControlOptions(collapsed=FALSE)) %>%
+		hideGroup("detector buffer") %>% hideGroup(names(habrasproj))
+	m
 }
 )
 

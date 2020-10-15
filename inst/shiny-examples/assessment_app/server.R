@@ -93,9 +93,9 @@ habmean<-reactive({
 	rast<-hab_raster()
 	buff<-buff()
 	dets<-detectors()
-	habvals<-raster::extract(rast, dets, buffer=buff)
-	habmean<- sapply(habvals, function(x) mean(x, na.rm=T))
-	habmean
+	habvals<-raster::extract(rast, dets, buffer=buff, fun=mean)
+#	habmean<- sapply(habvals, function(x) mean(x, na.rm=T))
+	habvals
 })
 
 
@@ -138,19 +138,25 @@ fit_mod<-reactive({
 	dets<- detectors()
 	cnts<-counts()
 	habmean<-habmean()
-	A<-areaREST()
-	Amult<-viewshedMultiplier()
 	K<-K()
 modname<-ModToFit()
 site.data<- cbind(dets, habmean)
 #format the data appropriately
 if(modname!= "REST"){emf<- eradicate::eFrame(cnts, siteCovs = site.data)} else
-                    {emf<- eFrameREST(countREST(), stayREST(), censREST(), A*Amult, activeREST(), siteCovs = site.data)}
+                    {
+                      Amult<-viewshedMultiplier()
+                    	emf<- eFrameREST(y=countREST(),
+                    									stay=stayREST(),
+                    									cens=censREST(),
+                    									area=areaREST()*viewshedMultiplier(),
+                    									active_hours=activeREST(),
+                    									siteCovs = data.frame(site.data))}
 #fit the appropriate model
 if(modname== "Occ" ) {model<-eradicate::occuM(~habmean, ~1, data=emf)}       else
 if(modname== "RN"  ) {model<-eradicate::occuRN(~habmean, ~1, K=K, data=emf)} else
 if(modname== "Nmix") {model<-eradicate::nmix(~habmean, ~1, K=K, data=emf)}   else
 if(modname== "REST") {model<-eradicate::REST(~habmean, data=emf)}
+
 model
 })
 

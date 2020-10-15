@@ -56,8 +56,8 @@ ui<-fluidPage(
 								 		tipify(numericInput(inputId="areaREST", label="Area of camera viewshed", value=2.67),
 								 			 "Camera viewshed area (in km^2) - use multiplier argument to rescale as required")),
 								 column(5,
-								 			selectInput(inputId="viewshedMultiplier", label="Viewshed area multiplier",
-								 									choices=c("1"=1,"10^-3"=10e-3, "10^-6"=10e-6, "10^-9"=10e-9), selected=10e-6))
+								 			numericInput(inputId="viewshedMultiplier", label="Viewshed area multiplier", value=0.001
+								 				))
 								 )),
 								 ),
 								 hr(),

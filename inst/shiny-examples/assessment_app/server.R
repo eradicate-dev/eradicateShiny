@@ -148,7 +148,7 @@ if(modname!= "REST"){emf<- eradicate::eFrame(cnts, siteCovs = site.data)} else
                     	emf<- eFrameREST(y=countREST(),
                     									stay=stayREST(),
                     									cens=censREST(),
-                    									area=areaREST()*viewshedMultiplier(),
+                    									area=areaREST()/viewshedMultiplier(),
                     									active_hours=activeREST(),
                     									siteCovs = data.frame(site.data))}
 #fit the appropriate model

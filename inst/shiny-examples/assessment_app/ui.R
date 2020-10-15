@@ -54,10 +54,10 @@ ui<-fluidPage(
 								 				 			 "Number of hours per day active")),
 								 	column(4,
 								 		tipify(numericInput(inputId="areaREST", label="Area of camera viewshed", value=2.67),
-								 			 "Camera viewshed area (in km^2) - use multiplier argument to rescale as required")),
+								 			 "Camera viewshed area use multiplier argument to rescale (m2) to (ha) as required. m2 -> ha:10000")),
 								 column(5,
-								 			numericInput(inputId="viewshedMultiplier", label="Viewshed area multiplier", value=0.001
-								 				))
+								 			 tipify(numericInput(inputId="viewshedMultiplier", label="Viewshed area multiplier", value=1000000),
+								 			 			 "Muliplier to convert viewshed area units to map area units m2:ha=>10000, m2:km2=>1000000"))
 								 )),
 								 ),
 								 hr(),

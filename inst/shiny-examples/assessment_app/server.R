@@ -139,9 +139,9 @@ fit_mod<-reactive({
 	habmean<-habmean()
 	K<-K()
 modname<-ModToFit()
-site.data<- cbind(dets, habmean)
+#site.data<- cbind(dets, habmean)
 #format the data appropriately
-if(modname!= "REST"){emf<- eradicate::eFrame(cnts, siteCovs = site.data)} else
+if(modname!= "REST"){emf<- eradicate::eFrame(cnts, siteCovs = data.frame(habmean))} else
                     {
                       Amult<-viewshedMultiplier()
                     	emf<- eFrameREST(y=countREST(),

@@ -98,7 +98,6 @@ habmean<-reactive({
 	habvals
 })
 
-
 #############################################################
 #  -- respond to UI events
 #############################################################
@@ -164,10 +163,13 @@ model
 summary_tab<-reactive({
 mod<-fit_mod()
 out<-summary(mod)
-npar1<-nrow(out[[1]])
-npar2<-nrow(out[[2]])
-out<-rbind(out[[1]], out[[2]])
+state_tab<-out[[1]]
+state_tab<-data.frame("Type"="State","Covariate"=row.names(state_tab), state_tab)
+detect_tab<-out[[2]]
+detect_tab<-data.frame("Type"="Detect","Covariate"=row.names(detect_tab), detect_tab)
+out<-rbind(state_tab, detect_tab)
 data.frame(out)
+names(out)[6]<-"p"
 out
 })
 

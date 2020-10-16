@@ -1,7 +1,7 @@
 ##DEFINE THE SERVER#####################################################################################################
 server<-function(input, output, session){
 	#splashscreen
-	Sys.sleep(3) # delay
+	Sys.sleep(4.5) # delay
 	waiter_hide() #hide splash screen
 #Boundary of study area, in a shapefile
 site_bound<-reactive({
@@ -17,7 +17,7 @@ site_bound<-reactive({
 hab_raster<-reactive({
 		if(is.null(input$habitat_rasters))
 			{habras<-stack(system.file("extdata", "san_nic_habitat.tif", package="eradicate"))
-			names(habras)<-"san_nic_habitat.tif" } else
+			names(habras)<-"san_nic_habitat" } else
 			{
 				#habras<-stack(input$habitat_raster$datapath)
 				nrast<-nrow(input$habitat_rasters)
@@ -128,8 +128,7 @@ K<-reactive({input$K})
 
 EstDens<-reactive({input$EstDens})
 
-state_formula<-reactive({input$state_formula})
-
+state_formula<-reactive({ paste0("~",input$state_formula)})
 
 #fit the selected model to the data.
 fit_mod<-reactive({
@@ -148,7 +147,7 @@ if(modname!= "REST"){emf<- eradicate::eFrame(cnts, siteCovs = data.frame(habmean
                     									cens=censREST(),
                     									area=areaREST()/viewshedMultiplier(),
                     									active_hours=activeREST(),
-                    									siteCovs = data.frame(site.data))}
+                    									siteCovs = data.frame(habmean))}
 #fit the appropriate model
 if(modname== "Occ" ) {model<-eradicate::occuM(state_formula(), ~1, data=emf)}       else
 if(modname== "RN"  ) {model<-eradicate::occuRN(state_formula(), ~1, K=K, data=emf)} else
@@ -172,6 +171,12 @@ names(out)[6]<-"p"
 out
 })
 
+AIC<-reactive({
+	mod<-fit_mod()
+	AIC<-mod$AIC
+	out<-paste0("AIC=",round(AIC, 2))
+})
+
 #summary table of abundance estimates conditional on selected model
 abund_tab<-reactive({
 	modname<-ModToFit()
@@ -192,12 +197,26 @@ DensRast<-reactive({
 	buff<-buff()  #buffer zone radius
 	rast<-hab_raster()
 	bound<-site_bound()
-#code in here to calculate density/occ surface
-	filt<-focalWeight(x=rast, d=buff, type='circle')
-	rast2<-focal(x=rast, w=filt,fun=sum, na.rm=TRUE, pad=TRUE)
-	vals<-getValues(rast2)
-	coeffs<-mod$state$estimates
-	preds.lin<-vals*coeffs[2] + coeffs[1]
+	#get the formula for the current model
+	form<-gsub("~", "", state_formula())
+	coeffs<-mod$estimates$state$estimates
+	varnames<-names(rast)
+	#extract out the variable names for prediction, but only if there are varaibles to begin with
+	if(form!= "1" | !is.null(form)){
+	    varnames<-strsplit(varnames, "\\+")[[1]]
+#calculate focal rasters
+	    filt<-focalWeight(x=rast, d=buff, type='circle')
+	    rastfocal<-list()
+	  for(i in seq_along(varnames)){
+	  	#make a focal layer for each raster
+	  rastfocal[[i]]<-focal(rast[[i]], w=filt,fun=mean, na.rm=TRUE, pad=TRUE)
+	  }
+	  rastfocal<-stack(rastfocal)
+	vals<-getValues(rastfocal)
+	preds.lin<-vals*coeffs[-1] + coeffs[1]
+	} else {
+		print(coeffs)
+		preds.lin<-coeffs[1]}
 	if(modname=="Occ"){preds<-plogis(preds.lin)} else
 	                  {preds<-exp(preds.lin)}
 	predras<-raster(rast)
@@ -226,6 +245,11 @@ output$abundance_table<-renderTable({
    caption="Real estimates",
 caption.placement = getOption("xtable.caption.placement", "top"),
 caption.width = getOption("xtable.caption.width", NULL))
+
+output$AIC <-renderText({
+	req(input$Run_model)
+	AIC()
+})
 
 #download the density raster
 output$downloadraster <- downloadHandler(
@@ -262,6 +286,7 @@ output$map<-renderLeaflet({
   	m <- m %>% addRasterImage(habrasproj[[count]],
   														colors=colorNumeric(palvec[count], values(habrasproj[[count]]), na.color = "#00000000"),
   														opacity=transparency,
+  														layerId = names(habrasproj)[count],
   														group=names(habrasproj)[count]) %>%
   		         addLegend(values=values(habrasproj[[count]]) ,
   		         					pal = colorNumeric(palvec[count], values(habrasproj[[count]]), na.color = "#00000000"),
@@ -278,7 +303,8 @@ output$map<-renderLeaflet({
 		addLayersControl(baseGroups=c("OSM (default)", "ESRI Topo", "ESRI Satellite"),
 										 overlayGroups = c("detectors", "detector buffer", names(habrasproj)),
 										 options=layersControlOptions(collapsed=FALSE)) %>%
-		hideGroup("detector buffer") %>% hideGroup(names(habrasproj))
+		hideGroup("detector buffer") %>%
+		hideGroup(names(habrasproj))
 	m
 }
 )
@@ -290,23 +316,27 @@ observe({
 	req(input$Run_model)
 	bound<-site_bound()
 	modname<-ModToFit()
-	if(modname=="Occ"){leglab<-"Pr(Occ)"} else {leglab<-"Density"}
+	if(modname=="Occ"){leglab<-"Pr(Occ) for pest"} else {leglab<-"Pest density"}
 	DensRast <- DensRast()
 	opacity<-habopacity()
 	transparency<-1-opacity
 	crs(DensRast)<-crs(bound)
 	DensRastProj<-projectRaster(DensRast, crs="+init=epsg:4326", method="bilinear")
-	pal <- colorNumeric("viridis", values(DensRastProj), na.color = "transparent")
+	#need to reimport habitat raster
+	habras<-hab_raster()
+	crs(habras)<-crs(bound) #assume same crs as region boundary
+	habrasproj<-projectRaster(habras, crs="+init=epsg:4326", method="bilinear")
+	pal <- colorNumeric("Reds", values(DensRastProj), na.color = "transparent")
 	leafletProxy("map") %>%
-		clearImages() %>%
-		clearControls() %>%
-		addRasterImage(DensRastProj, colors=pal,
+		#clearImages() %>%
+		#clearControls() %>%
+		addRasterImage(DensRastProj, colors=pal, layerId = "PestDensity",
 							opacity=transparency, group="density raster") %>%
 		addLegend(position="bottomright", pal=pal, bins=6, title=leglab, values=values(DensRast)) %>%
 		addLayersControl(baseGroups=c("OSM (default)", "ESRI Topo", "ESRI Satellite"),
-										 overlayGroups = c("detectors", "detector buffer", "density raster"),
+										 overlayGroups = c("detectors", "detector buffer", names(habrasproj), "density raster"),
 										 options=layersControlOptions(collapsed=FALSE)) %>%
-		hideGroup(c("habitat raster","detector buffer", "detectors"))
+		hideGroup(c("detector buffer", "detectors"))
 })
 
 

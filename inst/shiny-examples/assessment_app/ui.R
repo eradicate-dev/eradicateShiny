@@ -4,16 +4,16 @@
 ui<-fluidPage(
 	#splashscreen
 	use_waiter(),
-	waiter_show_on_load(html = '<p col="white">Loading eradicate...</p>', logo="logos.gif", color="#666666"),
+	waiter_show_on_load(html = '<p col="white">Loading assessment app...</p>', logo="logos.gif", color="#666666"),
 	tags$head(
 		tags$style(HTML("hr {border-top: 1px solid #000000;}",
 										".shiny-input-container {margin-bottom: -15px; margin-top: -15px}"))
 	),
 	titlePanel(title=div(
-											 "eradicate:  pre-eradication assessment",
-											 img(src="ari_logo.jpg", height=50, align="right"),
+											 "Pre-eradication assessment",
 											 img(src="ciss_logo.jpg", height=50, align="right"),
-											 img(src="manaki_logo.png", height=50, align="right"))),
+											 img(src="manaki_logo.png", height=50, align="right"),
+											 img(src="ari_logo.jpg", height=70, align="right"))),
 	sidebarLayout(
 		sidebarPanel(#CHOOSE A MODEL---------------------------------- ---------------------------------------------------
 								 fluidRow(column(5, radioButtons(inputId="Model", label="Select a model to use",
@@ -71,7 +71,7 @@ ui<-fluidPage(
 								 #CONTROL TO FIT MODEL ------------------------------------------------------------------------------
 								 fluidRow(
 								 column(6,
-								 			 tipify(textInput(inputId="state_formula", "state formula", value="~1"),
+								 			 tipify(textInput(inputId="state_formula", "state formula", value="1"),
 								 			 			 "Formula relating abundance or occupancy to habitat covariates")
 								 			 ),
 								 column(3, actionButton(inputId="Run_model", label="Fit model"),
@@ -87,7 +87,8 @@ ui<-fluidPage(
 									#Fitted models tab
 									tabPanel(title="Fitted model",        value="panel2",
 													    fluidRow( tableOutput(outputId="parameter_table") %>% withSpinner(type=4)),
-													    fluidRow( tableOutput(outputId="abundance_table") %>% withSpinner(type=4)),
+													    fluidRow( tableOutput(outputId="abundance_table") ),
+													    fluidRow( textOutput(outputId="AIC") ),
 													 ))
 		)
 	),

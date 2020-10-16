@@ -70,9 +70,13 @@ ui<-fluidPage(
 								 hr(),
 								 #CONTROL TO FIT MODEL ------------------------------------------------------------------------------
 								 fluidRow(
+								 column(6,
+								 			 tipify(textInput(inputId="state_formula", "state formula", value="~1"),
+								 			 			 "Formula relating abundance or occupancy to habitat covariates")
+								 			 ),
 								 column(3, actionButton(inputId="Run_model", label="Fit model"),
 								 			     actionButton("EstDens", "Estimate Density Surface"),
-								 			     downloadButton("downloadraster", "Download Density Raster")) ,width=4, fluid=TRUE)
+								 			     downloadButton("downloadraster", "Download Density Raster")) ,width=7, fluid=TRUE)
 								 ),
 
 		mainPanel(

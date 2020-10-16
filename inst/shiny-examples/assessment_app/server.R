@@ -122,15 +122,14 @@ observe(if(input$Model!="Occ") {
 #############################################################
 #  -- Model fitting
 #############################################################
-ModToFit<-reactive({
-	input$Model
-})
-K<-reactive({
-	input$K
-})
-EstDens<-reactive({
-	input$EstDens
-})
+ModToFit<-reactive({input$Model})
+
+K<-reactive({input$K})
+
+EstDens<-reactive({input$EstDens})
+
+state_formula<-reactive({input$state_formula})
+
 
 #fit the selected model to the data.
 fit_mod<-reactive({
@@ -151,10 +150,10 @@ if(modname!= "REST"){emf<- eradicate::eFrame(cnts, siteCovs = data.frame(habmean
                     									active_hours=activeREST(),
                     									siteCovs = data.frame(site.data))}
 #fit the appropriate model
-if(modname== "Occ" ) {model<-eradicate::occuM(~habmean, ~1, data=emf)}       else
-if(modname== "RN"  ) {model<-eradicate::occuRN(~habmean, ~1, K=K, data=emf)} else
-if(modname== "Nmix") {model<-eradicate::nmix(~habmean, ~1, K=K, data=emf)}   else
-if(modname== "REST") {model<-eradicate::REST(~habmean, data=emf)}
+if(modname== "Occ" ) {model<-eradicate::occuM(state_formula(), ~1, data=emf)}       else
+if(modname== "RN"  ) {model<-eradicate::occuRN(state_formula(), ~1, K=K, data=emf)} else
+if(modname== "Nmix") {model<-eradicate::nmix(state_formula(), ~1, K=K, data=emf)}   else
+if(modname== "REST") {model<-eradicate::REST(state_formula(), data=emf)}
 
 model
 })

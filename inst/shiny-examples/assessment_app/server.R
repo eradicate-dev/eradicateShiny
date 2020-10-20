@@ -218,7 +218,7 @@ DensRast<-reactive({
 	rast<-hab_raster()
 	bound<-site_bound()
 	#get the formula for the current model
-	form<-gsub("~", "", state_formula())
+	form<-state_formula()
 	coeffs<-mod$estimates$state$estimates
 	varnames<-names(rast)
 	#extract out the variable names for prediction, but only if there are varaibles to begin with

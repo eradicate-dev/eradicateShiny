@@ -79,8 +79,8 @@ ui<-fluidPage(
 
 								 			 ),
 								 column(3, actionButton(inputId="Run_model", label="Fit model"),
-								 			     actionButton("EstDens", "Estimate Density Surface"),
-								 			     downloadButton("downloadraster", "Download Density Raster")) ,width=7, fluid=TRUE)
+								 			     actionButton(inputId="EstDens", "Estimate Density Surface"),
+								 			     downloadButton(inputId="downloadraster","Download Density Raster")) ,width=7, fluid=TRUE)
 								 ),
 
 		mainPanel(

@@ -28,6 +28,7 @@ hab_raster<-reactive({
 			}
 		habras
 	})
+
 #csv of detectors. default is San Nicolas
 detectors<-reactive({
 		if(is.null(input$detectors))
@@ -98,6 +99,17 @@ habmean<-reactive({
 	habvals
 })
 
+#reactive to get variables names of habitat rasters
+var_names<-reactive({
+	rast_names<-names(hab_raster())
+	rast_names
+})
+
+#observer to update checkboxlist for habitat rasters
+observeEvent(var_names(),
+						 updateCheckboxGroupInput(session, inputId="state_formula", "habitat covariates",
+						 												 choices=var_names()))
+
 #############################################################
 #  -- respond to UI events
 #############################################################
@@ -128,7 +140,13 @@ K<-reactive({input$K})
 
 EstDens<-reactive({input$EstDens})
 
-state_formula<-reactive({ paste0("~",input$state_formula)})
+state_formula<-reactive({
+	modelvars<-input$state_formula
+	if(length(modelvars)==0) {form="1"} else
+	                         {form=paste0(modelvars, collapse="+") }
+	form<-paste0("~",form)
+	form
+	})
 
 #fit the selected model to the data.
 fit_mod<-reactive({
@@ -136,6 +154,8 @@ fit_mod<-reactive({
 	cnts<-counts()
 	habmean<-habmean()
 	K<-K()
+	form<-state_formula()
+	print(form)
 modname<-ModToFit()
 #site.data<- cbind(dets, habmean)
 #format the data appropriately
@@ -215,7 +235,6 @@ DensRast<-reactive({
 	vals<-getValues(rastfocal)
 	preds.lin<-vals*coeffs[-1] + coeffs[1]
 	} else {
-		print(coeffs)
 		preds.lin<-coeffs[1]}
 	if(modname=="Occ"){preds<-plogis(preds.lin)} else
 	                  {preds<-exp(preds.lin)}

@@ -71,8 +71,11 @@ ui<-fluidPage(
 								 #CONTROL TO FIT MODEL ------------------------------------------------------------------------------
 								 fluidRow(
 								 column(6,
-								 			 tipify(textInput(inputId="state_formula", "state formula", value="1"),
-								 			 			 "Formula relating abundance or occupancy to habitat covariates")
+								 			 checkboxGroupInput(inputId="state_formula", label="habitat covariates",
+								 			 									 choices=NULL,
+								 			 									 selected=NULL
+								 			 									 )
+
 								 			 ),
 								 column(3, actionButton(inputId="Run_model", label="Fit model"),
 								 			     actionButton("EstDens", "Estimate Density Surface"),

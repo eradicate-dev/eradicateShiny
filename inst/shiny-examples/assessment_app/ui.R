@@ -71,10 +71,11 @@ ui<-fluidPage(
 								 #CONTROL TO FIT MODEL ------------------------------------------------------------------------------
 								 fluidRow(
 								 column(6,
-								 			 checkboxGroupInput(inputId="state_formula", label="habitat covariates",
+								 			 tipify(checkboxGroupInput(inputId="state_formula", label="habitat covariates",
 								 			 									 choices=NULL,
 								 			 									 selected=NULL
-								 			 									 )
+								 			 									 ),"Select habitat variables for inclusion in abundance/occupancy model.
+								 			 			               If none selected an intercept-only model will be fitted")
 
 								 			 ),
 								 column(3, actionButton(inputId="Run_model", label="Fit model"),

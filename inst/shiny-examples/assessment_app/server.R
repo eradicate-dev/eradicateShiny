@@ -15,19 +15,20 @@ site_bound<-reactive({
 	})
 #raster of habitat suitability. default is San Nicolas
 hab_raster<-reactive({
-		if(is.null(input$habitat_rasters))
-			{habras<-stack(system.file("extdata", "san_nic_habitat.tif", package="eradicate"))
-			names(habras)<-"san_nic_habitat" } else
-			{
-				#habras<-stack(input$habitat_raster$datapath)
-				nrast<-nrow(input$habitat_rasters)
-				rasts<-list()
-				for(i in 1:nrast){rasts[[i]] <- raster(input$habitat_rasters[i, 'datapath'])
-				                 names(rasts[[i]])<-gsub(".tif", "", input$habitat_rasters[i, 'name'])}
-				habras<-stack(rasts)
-			}
-		habras
-	})
+	if(is.null(input$habitat_rasters))
+	{habras<-stack(system.file("extdata", "san_nic_habitat.tif", package="eradicate"))
+	names(habras)<-"san_nic_habitat" } else
+	{
+		#habras<-stack(input$habitat_raster$datapath)
+		nrast<-nrow(input$habitat_rasters)
+		rasts<-list()
+		for(i in 1:nrast){rasts[[i]] <- raster(input$habitat_rasters[i, 'datapath'])
+		names(rasts[[i]])<-gsub(".tif", "", input$habitat_rasters[i, 'name'])}
+		habras<-stack(rasts)
+	}
+	habras
+})
+
 
 #csv of detectors. default is San Nicolas
 detectors<-reactive({

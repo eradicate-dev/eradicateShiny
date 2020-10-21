@@ -4,13 +4,13 @@
 ui<-fluidPage(
 	#splashscreen
 	use_waiter(),
-	waiter_show_on_load(html = '<p col="white">Loading eradicate...</p>', logo="logos.gif", color="#666666"),
+	waiter_show_on_load(html = '<p col="white">Loading eradication app...</p>', logo="logos.gif", color="#666666"),
 	tags$head(
 		tags$style(HTML("hr {border-top: 1px solid #000000;}",
 										".shiny-input-container {margin-bottom: -15px; margin-top: -15px}"))
 	),
 	titlePanel(title=div(
-		"eradicate:  eradication monitoring",
+		"Eradication monitoring",
 		img(src="ari_logo.jpg", height=50, align="right"),
 		img(src="ciss_logo.jpg", height=50, align="right"),
 		img(src="manaki_logo.png", height=50, align="right"))),
@@ -19,20 +19,25 @@ ui<-fluidPage(
 								 fluidRow(
 								 	column(5,
 								 				 radioButtons(inputId="Model", label="Select model",
-								 				 						 choices=list("remPois"="remPois",
+								 				 						 choices=list("remCE"="remCE",
+								 				 						 						 "remGP"="remGP",
 								 				 						 						 "remGR"="remGR",
 								 				 						 						 "remGRM"="remGRM",
-								 				 						 						 "remGP (aspatial)"="remGP"
-								 				 						 ), selected="remPois")),
+								 				 						 						 "remMN"="remMN",
+								 				 						 						 "remMN"="remMNO"
+								 				 						 ), selected="remGP")),
 								 	#conditionally take input for parameter K, depending on model type.
-								 	conditionalPanel("input.Model!='remPois'&&input.Model!='remGP'",
+								 	conditionalPanel("input.Model!='CE'&&input.Model!='remMN'",
 								 									 column(2, numericInput(inputId="K", label="K", min=1, max=NA, value=50, step=1)
 								 									 ))),
 								 hr(),
 								 wellPanel(
 								 fileInput(inputId="boundary", label="Region boundary (.shp)",
 								 					multiple=TRUE,  accept=c('.shp','.dbf','.sbn','.sbx','.shx','.prj')),
-								 fileInput(inputId="habitat_rasters", label="Habitat raster (.tif, .asc)", accept=c(".tif", ".asc")),
+								 tipify(fileInput(inputId="habitat_rasters", label="Habitat raster (.tif)",
+								 								 multiple=TRUE, accept=c(".tif")),
+								 			 "Raster files (.tif or .asc) of habitat covariates in the same projection as the boundary.
+								 			    All rasters must have the same extent and resolution"),
 								 fileInput(inputId="traps", label="Trap locations (.csv)", accept=c("text/csv", ".csv")),
 								 fileInput(inputId="removals", label="Removal histories (.csv)", accept=c("text/csv", ".csv")),
 								 fileInput(inputId="detections", label="Detection histories (.csv)", accept=c("text/csv", ".csv")),
@@ -49,6 +54,14 @@ ui<-fluidPage(
 								 hr(),
 								 #SELECT APPROPRIATE MODEL --------------------------------------------------------------------------
 								 fluidRow(
+								 	column(6,
+								 				 tipify(checkboxGroupInput(inputId="state_formula", label="habitat covariates",
+								 				 													choices=NULL,
+								 				 													selected=NULL
+								 				 ),"Select habitat variables for inclusion in abundance model.
+								 			 			               If none selected an intercept-only model will be fitted")
+
+								 	),
 								 column(2, actionButton(inputId="Run_model", label="Fit model")) ,width=4, fluid=TRUE)),
 		mainPanel(
 			tabsetPanel(id="maintabs", type="tabs",
@@ -61,7 +74,8 @@ ui<-fluidPage(
 									#Fitted models tab
 									tabPanel(title="Fitted Model",        value="panel2",
 													    fluidRow( tableOutput(outputId="parameter_table") %>% withSpinner(type=4)),
-													    fluidRow( tableOutput(outputId="abundance_table") %>% withSpinner(type=4))
+													    fluidRow( tableOutput(outputId="abundance_table")),
+													    fluidRow( textOutput(outputId="AIC") ),
 													 ))
 		)
 	)

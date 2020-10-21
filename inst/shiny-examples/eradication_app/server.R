@@ -1,7 +1,7 @@
 ##DEFINE THE SERVER#####################################################################################################
 server<-function(input, output, session){
 	#splashscreen
-	Sys.sleep(3) # delay
+	Sys.sleep(4.5) # delay
 	waiter_hide() #hide splash screen
 #Boundary of study area, in a shapefile
 	site_bound<-reactive({
@@ -13,11 +13,19 @@ server<-function(input, output, session){
 		getshp <- list.files(dir, pattern="*.shp", full.names=TRUE)
 		st_read(getshp, quiet=TRUE)
 	})
-#raster of habitat suitability. default is San Nicolas
-hab_raster<-reactive({
-		if(is.null(input$habitat_raster))
-			{habras<-raster(system.file("extdata", "san_nic_habitat.tif", package="eradicate"))} else
-		  {habras<-raster(input$habitat_raster$datapath) }
+#upload rasters of habitat variables. default is San Nicolas
+	hab_raster<-reactive({
+		if(is.null(input$habitat_rasters))
+		{habras<-stack(system.file("extdata", "san_nic_habitat.tif", package="eradicate"))
+		names(habras)<-"san_nic_habitat" } else
+		{
+			#habras<-stack(input$habitat_raster$datapath)
+			nrast<-nrow(input$habitat_rasters)
+			rasts<-list()
+			for(i in 1:nrast){rasts[[i]] <- raster(input$habitat_rasters[i, 'datapath'])
+			names(rasts[[i]])<-gsub(".tif", "", input$habitat_rasters[i, 'name'])}
+			habras<-stack(rasts)
+		}
 		habras
 	})
 #csv of trap locations.
@@ -87,12 +95,20 @@ habmean<-reactive({
 	rast<-hab_raster()
 	buff<-buff()
 	traps<-traps()
-	habvals<-raster::extract(rast, traps, buffer=buff)
-	habmean<- sapply(habvals, function(x) mean(x, na.rm=T))
-	habmean
+	habvals<-raster::extract(rast, traps, buffer=buff, fun=mean)
+	habvals
 })
 
+#reactive to get the variables names of the habitat rasters
+var_names<-reactive({
+	rast_names<-names(hab_raster())
+	rast_names
+})
 
+#observer to update checkboxlist for the current habitat rasters
+observeEvent(var_names(),
+						 updateCheckboxGroupInput(session, inputId="state_formula", "habitat covariates",
+						 												 choices=var_names()))
 
 #############################################################
 #  -- Model fitting options
@@ -101,33 +117,48 @@ ModToFit<-reactive({
 	input$Model
 })
 
+K<-reactive({
+	input$K
+})
+
+
+state_formula<-reactive({
+	modelvars<-input$state_formula
+	if(length(modelvars)==0) {form="1"} else
+	{form=paste0(modelvars, collapse="+") }
+	form<-paste0("~",form)
+	form
+})
+
 #fit the selected model to the data.
 fit_mod<-reactive({
-traps<- traps()
-removals<-removals()
-detections<-detections()
-nights<-nights()
-modname<-ModToFit()
-K<-K()
-#prep the data
-#habvals<-raster::extract(rast, traps, buffer=buff)
-#habmean<- sapply(habvals, function(x) mean(x, na.rm=T))
-habmean<-habmean()
-site.data<- cbind(traps, habmean)
-if(modname== "remPois" ) {emf<-eFrameR(removals,type="removal", siteCovs = site.data)
-	                         model<-eradicate::remPois(~habmean, ~1, data=emf)} else
-if(modname== "remGR"  ) {emf<- eFrameGR(removals,  numPrimary=1, type="removal", siteCovs = site.data)
-                           model<- eradicate::remGR(~habmean, ~1, ~1, data=emf, K=K)} else
-if(modname== "remGRM"  ) {emf<- eFrameGRM(removals, detections, numPrimary=1, type="removal", siteCovs = site.data)
-                           	model<- eradicate::remGRM(~habmean, ~1, ~1, ~1, data=emf, K=K)} else
-if(modname== "remGP"  ) {catch<- apply(removals,2,sum)
+       traps<- traps()
+       removals<-removals()
+       detections<-detections()
+       nights<-nights()
+       modname<-ModToFit()
+       K<-K()
+       #extract habitat variables only for spatial models, not otherwise
+       if(modname!="remCE" & modname!="remGP") {site.data<-habmean()}
+if(modname== "remCE")    {catch<- apply(removals,2,sum)
                           effort<- rep(nrow(removals), length(catch))
-                         # extra monitoring/effort data
-                          index<- apply(detections,2,sum)
-                          ieffort<- rep(nrow(detections), length(index))
-                          emf<- eFrameGP(catch, effort, index, ieffort)
-                          model<- remGP(emf)
-}
+	                        model<-remCE(catch, effort)}  else
+if(modname== "remGP")    {catch<- apply(removals,2,sum)
+	                        effort<- rep(nrow(removals), length(catch))
+	                       # extra monitoring/effort data
+	                       index<- apply(detections,2,sum)
+	                       ieffort<- rep(nrow(detections), length(index))
+	                       emf<- eFrameGP(catch, effort, index, ieffort)
+	                       model<- remGP(emf) } else
+if(modname== "remGR")    {emf<- eFrameGR(removals,  numPrimary=1, type="removal", siteCovs = site.data)
+		                     model<- eradicate::remGR(state_formula(), ~1, ~1, data=emf, K=K)} else
+if(modname== "remGRM"  ) {emf<- eFrameGRM(removals, detections, numPrimary=1, type="removal", siteCovs = site.data)
+		                     model<- eradicate::remGRM(state_formula(), ~1, ~1, ~1, data=emf, K=K)} else
+if(modname== "remMN" )   {emf<-eFrameR(y=removals, siteCovs=site.data, obsCovs=NULL) #specify details
+	                        model<-remMN(lamformula=state_formula(), detformula = ~1, data=emf)} else
+if(modname== "remMNO" )  {emf=eFrameMNO()#specify details
+	                        model=remMN(lamformula=state_formula(), gamformula=~1, data=emf,
+	                        						 omformula=~1, detformula = ~1, data=emf, K=K)}
 model
 })
 
@@ -153,28 +184,39 @@ detection_plot<-reactive({
 
 
 #summary table of parameter estimates
+#summary table of parameter estimates for selected model
 summary_tab<-reactive({
-mod<-fit_mod()
-out<-summary(mod)
-npar1<-nrow(out[[1]])
-npar2<-nrow(out[[2]])
-out<-rbind(out[[1]], out[[2]])
-data.frame(out)
-out
+	mod<-fit_mod()
+	out<-summary(mod)
+	state_tab<-out[[1]]
+	state_tab<-data.frame("Type"="State","Covariate"=row.names(state_tab), state_tab)
+	detect_tab<-out[[2]]
+	detect_tab<-data.frame("Type"="Detect","Covariate"=row.names(detect_tab), detect_tab)
+	out<-rbind(state_tab, detect_tab)
+	data.frame(out)
+	names(out)[6]<-"p"
+	out
 })
 
-#summary table of abundance estimates
+AIC<-reactive({
+	mod<-fit_mod()
+	AIC<-mod$AIC
+	out<-paste0("AIC=",round(AIC, 2))
+})
+
+#summary table of abundance estimates conditional on selected model
 abund_tab<-reactive({
 	modname<-ModToFit()
 	mod<-fit_mod()
-	ests<-calcN(mod)
-	Nhat<-ests$Nhat
-	Nresid<-ests$Nresid
-	out<-bind_rows(Nhat, Nresid)
-	out<-data.frame(out)#data.frame("Parameter"=c("Nhat", "Nresid"), out)
-  out
+	buff<-buff()  #buffer zone radius
+	#If occupancy, no buffer offset applies, else offset estimate with buffer area
+	if(modname=="Occ") {Nhat<-calcN(mod)} else {Nhat<-calcN(mod)}
+	if(modname=="Occ"){out<-Nhat$Occ} else
+		if(modname=="RN"){out<-Nhat$Nhat} else
+			if(modname=="Nmix"){out<-Nhat$Nhat} else
+				if(modname=="REST"){out<-Nhat$Nhat}
+	out
 })
-
 
 ###########################################################################################
 #
@@ -210,24 +252,43 @@ output$map<-renderLeaflet({
 	req(input$habitat_radius)
 	#set up and tranform site boundary
 	bound<-site_bound()
+	opacity<-habopacity()
+	transparency<-1-opacity
+
 	traps<-st_as_sf(traps(), coords = c("x", "y"), crs=st_crs(bound))
 	traps_buff<-st_buffer(traps, dist=buff())
 	habras<-hab_raster()
 	crs(habras)<-crs(bound) #assume same crs as region boundary
-	pal <- colorNumeric("viridis", values(habras), na.color = "transparent")
-	leaflet() %>%
+	habrasproj<-projectRaster(habras, crs="+init=epsg:4326", method="bilinear")
+	nrast<-nlayers(habrasproj) #how many habitat rasters in the stack?
+	palvec<-c("viridis", "magma", "plasma", "inferno")
+	m<-leaflet() %>%
 		addTiles(group="OSM") %>%
 		addProviderTiles("Esri.WorldTopoMap", group="ESRI Topo") %>%
-		addProviderTiles("Esri.WorldImagery", group="ESRI Satellite") %>%
-  	addRasterImage(projectRaster(habras, crs="+init=epsg:4326", method="ngb"), colors=pal,
-  								 opacity=habopacity(), group="habitat raster") %>%
-		addPolygons(data=st_transform(bound, "+init=epsg:4326"), weight=2, fill=FALSE) %>%
+		addProviderTiles("Esri.WorldImagery", group="ESRI Satellite")
+	count =1
+	while(count<=nrast) {  #adding habitat rasters one at a time
+		m <- m %>% addRasterImage(habrasproj[[count]],
+															colors=colorNumeric(palvec[count], values(habrasproj[[count]]), na.color = "#00000000"),
+															opacity=transparency,
+															layerId = names(habrasproj)[count],
+															group=names(habrasproj)[count]) %>%
+			addLegend(values=values(habrasproj[[count]]) ,
+								pal = colorNumeric(palvec[count], values(habrasproj[[count]]), na.color = "#00000000"),
+								title=names(habrasproj)[count], bins=5,
+								group = names(habrasproj)[count], position="bottomleft")
+		count<-count+1
+	}
+	m <- m %>%	addPolygons(data=st_transform(bound, "+init=epsg:4326"), weight=2, fill=FALSE) %>%
 		addCircleMarkers(data=st_transform(traps, "+init=epsg:4326"), color="red", radius=1, group="traps") %>%
 		addPolygons(data=st_transform(traps_buff, "+init=epsg:4326"), color="red", weight=1, group="traps buffer") %>%
-		addScaleBar("bottomleft", options=scaleBarOptions(imperial=FALSE, maxWidth = 200)) %>%
+		addScaleBar("bottomright", options=scaleBarOptions(imperial=FALSE, maxWidth = 200)) %>%
+
 		addLayersControl(baseGroups=c("OSM (default)", "ESRI Topo", "ESRI Satellite"),
-										 overlayGroups = c("traps", "traps buffer", "habitat raster"),
-										 options=layersControlOptions(collapsed=FALSE))
+										 overlayGroups = c("traps", "traps buffer", names(habrasproj)),
+										 options=layersControlOptions(collapsed=FALSE)) %>%
+		hideGroup("traps buffer") %>%
+		hideGroup(names(habrasproj)[-1]) #keep the first raster displayed
 })
 
 }

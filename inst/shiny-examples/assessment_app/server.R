@@ -217,25 +217,31 @@ DensRast<-reactive({
 	buff<-buff()  #buffer zone radius
 	rast<-hab_raster()
 	bound<-site_bound()
-	#get the formula for the current model
+	#get the names of the coefficients that are actually in the model:
 	form<-state_formula()
+	form_names<-gsub("~", "", form)
+	form_names<-strsplit(form_names, "\\+")
+	#
 	coeffs<-mod$estimates$state$estimates
 	varnames<-names(rast)
-	#extract out the variable names for prediction, but only if there are varaibles to begin with
-	if(form!= "1" | !is.null(form)){
-	    varnames<-strsplit(varnames, "\\+")[[1]]
-#calculate focal rasters
-	    filt<-focalWeight(x=rast, d=buff, type='circle')
+
+	#if intercept only, don't bother with focal raster calculations
+	if(form== "~1"){preds.lin<-coeffs[1]} else {
+      #calculate focal rasters, but only for required coefficients
+		  rast_incl<-which(varnames %in% names(coeffs))
+		  rast_use<-rast[[rast_incl]]
+	    filt<-focalWeight(x=rast_use, d=buff, type='circle')
 	    rastfocal<-list()
-	  for(i in seq_along(varnames)){
-	  	#make a focal layer for each raster
-	  rastfocal[[i]]<-focal(rast[[i]], w=filt,fun=mean, na.rm=TRUE, pad=TRUE)
-	  }
+	      for(i in seq_along(names(rast_use))){
+	  	  #make a focal layer for each raster in the stack
+	      rastfocal[[i]]<-focal(rast_use[[i]], w=filt,fun=mean, na.rm=TRUE, pad=TRUE)
+	      } #end focal loop
 	  rastfocal<-stack(rastfocal)
 	vals<-getValues(rastfocal)
-	preds.lin<-vals*coeffs[-1] + coeffs[1]
-	} else {
-		preds.lin<-coeffs[1]}
+	vals<-cbind(1, vals) #add an intercept
+	preds.lin<-vals %*% coeffs
+	}
+	#back transform from link scale.
 	if(modname=="Occ"){preds<-plogis(preds.lin)} else
 	                  {preds<-exp(preds.lin)}
 	predras<-raster(rast)
@@ -315,7 +321,8 @@ output$map<-renderLeaflet({
   	count<-count+1
   }
   #adding additional decorations to the plot
-	m<-m %>%	addPolygons(data=st_transform(bound, "+init=epsg:4326"), weight=2, fill=FALSE) %>%
+	m<-m %>%
+		addPolygons(data=st_transform(bound, "+init=epsg:4326"), weight=2, fill=FALSE) %>%
 		addCircleMarkers(data=st_transform(detectors, "+init=epsg:4326"), color="red", radius=1, group="detectors") %>%
 		addPolygons(data=st_transform(detector_buff, "+init=epsg:4326"), color="red", weight=1, group="detector buffer") %>%
 		addScaleBar("bottomright", options=scaleBarOptions(imperial=FALSE, maxWidth = 200)) %>%
@@ -323,12 +330,13 @@ output$map<-renderLeaflet({
 										 overlayGroups = c("detectors", "detector buffer", names(habrasproj)),
 										 options=layersControlOptions(collapsed=FALSE)) %>%
 		hideGroup("detector buffer") %>%
-		hideGroup(names(habrasproj))
+		hideGroup(names(habrasproj)[-1]) #keep the first raster displayed
 	m
 }
 )
 
-observe({
+#code to update map with raster predictions
+observeEvent(input$EstDens, {
 	req(input$EstDens)
 	req(input$boundary)
 	req(input$Habitat_opacity)
@@ -347,11 +355,10 @@ observe({
 	habrasproj<-projectRaster(habras, crs="+init=epsg:4326", method="bilinear")
 	pal <- colorNumeric("Reds", values(DensRastProj), na.color = "transparent")
 	leafletProxy("map") %>%
-		#clearImages() %>%
-		#clearControls() %>%
+		clearImages() %>%
 		addRasterImage(DensRastProj, colors=pal, layerId = "PestDensity",
 							opacity=transparency, group="density raster") %>%
-		addLegend(position="bottomright", pal=pal, bins=6, title=leglab, values=values(DensRast)) %>%
+		addLegend(position="bottomright", pal=pal, bins=6, title=leglab, values=values(DensRastProj)) %>%
 		addLayersControl(baseGroups=c("OSM (default)", "ESRI Topo", "ESRI Satellite"),
 										 overlayGroups = c("detectors", "detector buffer", names(habrasproj), "density raster"),
 										 options=layersControlOptions(collapsed=FALSE)) %>%

@@ -95,8 +95,7 @@ habmean<-reactive({
 	rast<-hab_raster()
 	buff<-buff()
 	dets<-detectors()
-	habvals<-raster::extract(rast, dets, buffer=buff, fun=mean)
-#	habmean<- sapply(habvals, function(x) mean(x, na.rm=T))
+	habvals<-raster::extract(rast, dets, buffer=buff, fun=mean, df=TRUE)
 	habvals
 })
 
@@ -154,12 +153,10 @@ fit_mod<-reactive({
 	dets<- detectors()
 	cnts<-counts()
 	habmean<-habmean()
+	print(habmean)
 	K<-K()
 	form<-state_formula()
-	print(form)
 modname<-ModToFit()
-#site.data<- cbind(dets, habmean)
-#format the data appropriately
 if(modname!= "REST"){emf<- eradicate::eFrame(cnts, siteCovs = data.frame(habmean))} else
                     {
                       Amult<-viewshedMultiplier()
@@ -174,7 +171,6 @@ if(modname== "Occ" ) {model<-eradicate::occuM(state_formula(), ~1, data=emf)}   
 if(modname== "RN"  ) {model<-eradicate::occuRN(state_formula(), ~1, K=K, data=emf)} else
 if(modname== "Nmix") {model<-eradicate::nmix(state_formula(), ~1, K=K, data=emf)}   else
 if(modname== "REST") {model<-eradicate::REST(state_formula(), data=emf)}
-
 model
 })
 

@@ -33,23 +33,28 @@ ui<-fluidPage(
 								 									 ))),
 								 hr(),
 								 wellPanel(
+								 	#hide spatial input tools if using an aspatial model
+								 	conditionalPanel("input.Model!='remCE'&&input.Model!='remGP'",
 								 fileInput(inputId="boundary", label="Region boundary (.shp)",
 								 					multiple=TRUE,  accept=c('.shp','.dbf','.sbn','.sbx','.shx','.prj')),
 								 tipify(fileInput(inputId="habitat_rasters", label="Habitat raster (.tif)",
 								 								 multiple=TRUE, accept=c(".tif")),
 								 			 "Raster files (.tif) of habitat covariates in the same projection as the boundary.
 								 			    All rasters must have the same extent and resolution"),
-								 fileInput(inputId="traps", label="Trap locations (.csv)", accept=c("text/csv", ".csv")),
+								 fileInput(inputId="traps", label="Trap locations (.csv)", accept=c("text/csv", ".csv"))), #end conditional block
 								 fileInput(inputId="removals", label="Removal histories (.csv)", accept=c("text/csv", ".csv")),
 								 conditionalPanel("input.Model=='remGRM'",
-								 fileInput(inputId="detections", label="Detection histories (.csv)", accept=c("text/csv", ".csv"))),
+								 fileInput(inputId="detections", label="Detection histories (.csv)", accept=c("text/csv", ".csv"))), #end conditional block?
 								 fluidRow(
 								 	column(4,
 								 numericInput("nights", "Nights per primary session", min=0, max=NA, value=10, step=1)))
 								 ),
 								 hr(),
 								 fluidRow(
-								 	column(3, actionButton("Plot_design", "Plot map"), actionButton("Plot_removal", "Plot removals")),
+								 	column(3,
+								 				 conditionalPanel("input.Model!='remCE'&&input.Model!='remGP'",
+								 				 actionButton("Plot_design", "Plot map")), #end conditional
+								 				    actionButton("Plot_removal", "Plot removals")),
 								 	conditionalPanel("input.Model!='remCE'&&input.Model!='remGP'",
 								 	column(4, numericInput("habitat_radius", "Raster sampling radius", min=0, max=NA, value=500, step=50)),
 								 	column(5, sliderInput("Habitat_opacity", "Raster opacity", min=0, max=1, value=0.2, step=0.2)))
@@ -73,7 +78,9 @@ ui<-fluidPage(
 													    leafletOutput(outputId = "map", height=700)),
 									tabPanel(title="Removals", value="panel3",
 													 fluidRow( plotOutput(outputId="removal_plot", width="60%")),
-													 fluidRow( plotOutput(outputId="detection_plot", width="60%"))),
+													 conditionalPanel("input.Model=='remGRM'",
+													 fluidRow( plotOutput(outputId="detection_plot", width="60%"))) #end conditional panel
+													 ),
 									#Fitted models tab
 									tabPanel(title="Fitted Model",        value="panel2",
 													    fluidRow( tableOutput(outputId="parameter_table") %>% withSpinner(type=4)),

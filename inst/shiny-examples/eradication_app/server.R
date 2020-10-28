@@ -85,7 +85,7 @@ observeEvent(input$Plot_removal, {
 	updateTabsetPanel(session, "maintabs",
 										selected = "panel3")
 })
-observe(if(input$Model!="RemPois" & input$Model!="RemGP") {
+observe(if(input$Model!="RemMN" & input$Model!="RemCE" & input$Model!="occuMS" ) {
 	updateNumericInput(session, "K", value=5*max(detections()) + 50) #sets default value for K on model select
 })
 ###################################################################################################
@@ -95,7 +95,7 @@ habmean<-reactive({
 	rast<-hab_raster()
 	buff<-buff()
 	traps<-traps()
-	habvals<-raster::extract(rast, traps, buffer=buff, fun=mean)
+	habvals<-raster::extract(rast, traps, buffer=buff, fun=mean, df=TRUE)
 	habvals
 })
 
@@ -140,9 +140,10 @@ fit_mod<-reactive({
        K<-K()
        #extract habitat variables only for spatial models, not otherwise
        if(modname!="remCE" & modname!="remGP") {site.data<-habmean()}
+       print(site.data)
 if(modname== "remCE")    {catch<- apply(removals,2,sum)
-                          effort<- rep(nrow(removals), length(catch))
-	                        model<-remCE(catch, effort)}  else
+                          effort<- colSums(!is.na(removals)) #number of non NA removal results at each time
+	                        model<-remCE(catch, effort, nboot=50)}  else
 if(modname== "remGP")    {catch<- apply(removals,2,sum)
 	                        effort<- rep(nrow(removals), length(catch))
 	                       # extra monitoring/effort data
@@ -150,15 +151,31 @@ if(modname== "remGP")    {catch<- apply(removals,2,sum)
 	                       ieffort<- rep(nrow(detections), length(index))
 	                       emf<- eFrameGP(catch, effort, index, ieffort)
 	                       model<- remGP(emf) } else
-if(modname== "remGR")    {emf<- eFrameGR(removals,  numPrimary=1, type="removal", siteCovs = site.data)
-		                     model<- eradicate::remGR(state_formula(), ~1, ~1, data=emf, K=K)} else
-if(modname== "remGRM"  ) {emf<- eFrameGRM(removals, detections, numPrimary=1, type="removal", siteCovs = site.data)
+if(modname== "remGR")    {emf<- eFrameGR(y=removals,
+																				 numPrimary=ncol(removals),
+																				 siteCovs = site.data)
+                         print("data collated")
+                         print(state_formula())
+		                     model<- remGR(lamformula=as.formula(state_formula()), #weird requirement to make the formula string a formula!
+		                     							phiformula = ~1,
+		                     							detformula = ~1,
+		                     							data=emf,
+		                     							K=K)
+		                     } else
+if(modname== "remGRM"  ) {emf<- eFrameGRM(removals,
+																					detections,
+																					numPrimary=1,
+																					type="removal",
+																					siteCovs = site.data)
 		                     model<- eradicate::remGRM(state_formula(), ~1, ~1, ~1, data=emf, K=K)} else
 if(modname== "remMN" )   {emf<-eFrameR(y=removals, siteCovs=site.data, obsCovs=NULL) #specify details
 	                        model<-remMN(lamformula=state_formula(), detformula = ~1, data=emf)} else
-if(modname== "remMNO" )  {emf=eFrameMNO()#specify details
-	                        model=remMN(lamformula=state_formula(), gamformula=~1, data=emf,
-	                        						 omformula=~1, detformula = ~1, data=emf, K=K)}
+if(modname== "remMNO" )  {emf=eFrameMNO()#specify details of data structure TBD
+	                        model=remMN(lamformula=state_formula(), gamformula=~1,
+	                        						 omformula=~1, detformula = ~1, data=emf, K=K)} else
+if(modname=="occuMS")   {emf=eframeMS() #specify details of data structure TBD
+                         model=occuMS(psiformula = state_formula, gamformula = ~1,
+                         						 epsformulat=~1,detformula=~1, data=emf)}
 model
 })
 
@@ -187,6 +204,8 @@ detection_plot<-reactive({
 #summary table of parameter estimates for selected model
 summary_tab<-reactive({
 	mod<-fit_mod()
+	mod_type<-ModToFit()
+	if(mod_type!="remCE"){
 	out<-summary(mod)
 	state_tab<-out[[1]]
 	state_tab<-data.frame("Type"="State","Covariate"=row.names(state_tab), state_tab)
@@ -194,14 +213,24 @@ summary_tab<-reactive({
 	detect_tab<-data.frame("Type"="Detect","Covariate"=row.names(detect_tab), detect_tab)
 	out<-rbind(state_tab, detect_tab)
 	data.frame(out)
-	names(out)[6]<-"p"
-	out
+	names(out)[6]<-"p"} else
+   if(mod_type=="remCE"){  #CE model doesn't have a summary method
+   	out<-data.frame(mod$results)[2,]
+   	out<-data.frame("Parameter"="lambda", out)
+   	names(out)<-c("Parameter", "Estimate", "SE", "Lwr95", "Upp95", "CV")
+   	out<-out[,1:3]  #hide unwanted columns for now
+   }
+	return(out)
 })
 
 AIC<-reactive({
 	mod<-fit_mod()
-	AIC<-mod$AIC
-	out<-paste0("AIC=",round(AIC, 2))
+	mod_type<-ModToFit()
+	if(mod_type!="remCE"){
+	   AIC<-mod$AIC
+	   out<-paste0("AIC=",round(AIC, 2))} else
+	if(mod_type=="remCE"){out<-NULL}  #no AIC for remCE
+	  return(out)
 })
 
 #summary table of abundance estimates conditional on selected model
@@ -210,11 +239,10 @@ abund_tab<-reactive({
 	mod<-fit_mod()
 	buff<-buff()  #buffer zone radius
 	#If occupancy, no buffer offset applies, else offset estimate with buffer area
-	if(modname=="Occ") {Nhat<-calcN(mod)} else {Nhat<-calcN(mod)}
-	if(modname=="Occ"){out<-Nhat$Occ} else
-		if(modname=="RN"){out<-Nhat$Nhat} else
-			if(modname=="Nmix"){out<-Nhat$Nhat} else
-				if(modname=="REST"){out<-Nhat$Nhat}
+	if(modname!="remCE") {out<-calcN(mod)} else
+	if(modname=="remCE") {out<-data.frame(mod$results)[1,]
+	                      out<-data.frame("Parameter"="N", out)
+	names(out)<-c("Parameter", "Estimate", "SE", "Lwr95", "Upp95", "CV") }
 	out
 })
 

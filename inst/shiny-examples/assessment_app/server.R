@@ -277,7 +277,7 @@ output$AIC <-renderText({
 output$downloadraster <- downloadHandler(
 	filename = "density_raster.tif",
 	content = function(file) {
-		writeRaster(DensRast(), file, format="GTiff", overwrite=TRUE)
+		writeRaster(DensRast(), filename=filename, format="GTiff", overwrite=TRUE)
 	}, contentType = "image/tif"
 )
 
@@ -353,6 +353,7 @@ observeEvent(input$EstDens, {
 	pal <- colorNumeric("Reds", values(DensRastProj), na.color = "transparent")
 	leafletProxy("map") %>%
 		clearImages() %>%
+		clearControls() %>%
 		addRasterImage(DensRastProj, colors=pal, layerId = "PestDensity",
 							opacity=transparency, group="density raster") %>%
 		addLegend(position="bottomright", pal=pal, bins=6, title=leglab, values=values(DensRastProj)) %>%

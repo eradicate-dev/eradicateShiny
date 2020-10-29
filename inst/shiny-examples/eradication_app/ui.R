@@ -70,7 +70,9 @@ ui<-fluidPage(
 								 			 			               If none selected an intercept-only model will be fitted"))
 
 								 	),
-								 column(2, actionButton(inputId="Run_model", label="Fit model")) ,width=4, fluid=TRUE)),
+								 	column(3, actionButton(inputId="Run_model", label="Fit model"),
+								 				 actionButton(inputId="EstDens", "Estimate Density Surface"),
+								 				 downloadButton(inputId="downloadraster","Download Density Raster")) ,width=7, fluid=TRUE)),
 		mainPanel(
 			tabsetPanel(id="maintabs", type="tabs",
 									#Map tab

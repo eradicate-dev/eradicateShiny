@@ -85,6 +85,10 @@ observeEvent(input$Plot_removal, {
 	updateTabsetPanel(session, "maintabs",
 										selected = "panel3")
 })
+observeEvent(input$EstDens, {
+	updateTabsetPanel(session, "maintabs",
+										selected = "panel1")
+})
 observe(if(input$Model!="RemMN" & input$Model!="RemCE" & input$Model!="occuMS" ) {
 	updateNumericInput(session, "K", value=5*max(detections()) + 50) #sets default value for K on model select
 })
@@ -121,6 +125,7 @@ K<-reactive({
 	input$K
 })
 
+EstDens<-reactive({input$EstDens})
 
 state_formula<-reactive({
 	modelvars<-input$state_formula
@@ -250,6 +255,46 @@ abund_tab<-reactive({
 	out
 })
 
+DensRast<-reactive({
+	modname<-ModToFit()
+	mod<-fit_mod()
+	buff<-buff()  #buffer zone radius
+	rast<-hab_raster()
+	bound<-site_bound()
+	#get the names of the coefficients that are actually in the model:
+	form<-state_formula()
+	form_names<-gsub("~", "", form)
+	form_names<-strsplit(form_names, "\\+")
+	#
+	coeffs<-mod$estimates$state$estimates
+	varnames<-names(rast)
+
+	#if intercept only, don't bother with focal raster calculations
+	print("estimating density surface")
+	if(form== "~1"){preds.lin<-coeffs[1]} else {
+		#calculate focal rasters, but only for required coefficients
+		rast_incl<-which(varnames %in% names(coeffs))
+		rast_use<-rast[[rast_incl]]
+		filt<-focalWeight(x=rast_use, d=buff, type='circle')
+		rastfocal<-list()
+		for(i in seq_along(names(rast_use))){
+			#make a focal layer for each raster in the stack
+			rastfocal[[i]]<-focal(rast_use[[i]], w=filt,fun=mean, na.rm=TRUE, pad=TRUE)
+		} #end focal loop
+		rastfocal<-stack(rastfocal)
+		vals<-getValues(rastfocal)
+		vals<-cbind(1, vals) #add an intercept
+		preds.lin<-vals %*% coeffs
+	}
+	#back transform from link scale.
+	if(modname=="Occ"){preds<-plogis(preds.lin)} else
+	{preds<-exp(preds.lin)}
+	predras<-raster(rast)
+	predras[]<-preds
+	predras<-mask(predras, bound)
+	predras
+})
+
 ###########################################################################################
 #
 #   --- RENDER THE OUTPUTS  ----
@@ -275,6 +320,19 @@ output$abundance_table<-renderTable({
 	req(input$Run_model)
 	abund_tab()
 }, row.names=FALSE, width=300, caption="Abundances", caption.placement = "top")
+
+output$AIC <-renderText({
+	req(input$Run_model)
+	AIC()
+})
+
+#download the density raster
+output$downloadraster <- downloadHandler(
+	filename = "density_raster.tif",
+	content = function(file) {
+		writeRaster(DensRast(), filename=filename, format="GTiff", overwrite=TRUE)
+	}, contentType = "image/tif"
+)
 
 #Render a map of the input data
 output$map<-renderLeaflet({
@@ -323,5 +381,36 @@ output$map<-renderLeaflet({
 		hideGroup(names(habrasproj)[-1]) #keep the first raster displayed
 })
 
-}
+#code to update map with raster predictions
+observeEvent(input$EstDens, {
+	req(input$EstDens)
+	req(input$boundary)
+	req(input$Habitat_opacity)
+	req(input$Run_model)
+	bound<-site_bound()
+	modname<-ModToFit()
+	if(modname=="Occ"){leglab<-"Pr(Occ) for pest"} else {leglab<-"Pest density"}
+	DensRast <- DensRast()
+	opacity<-habopacity()
+	transparency<-1-opacity
+	crs(DensRast)<-crs(bound)
+	DensRastProj<-projectRaster(DensRast, crs="+init=epsg:4326", method="bilinear")
+	#need to reimport habitat raster
+	habras<-hab_raster()
+	crs(habras)<-crs(bound) #assume same crs as region boundary
+	habrasproj<-projectRaster(habras, crs="+init=epsg:4326", method="bilinear")
+	pal <- colorNumeric("Reds", values(DensRastProj), na.color = "transparent")
+	leafletProxy("map") %>%
+		clearImages() %>%
+		clearControls() %>%
+		addRasterImage(DensRastProj, colors=pal, layerId = "PestDensity",
+									 opacity=transparency, group="density raster") %>%
+		addLegend(position="bottomright", pal=pal, bins=6, title=leglab, values=values(DensRastProj)) %>%
+		addLayersControl(baseGroups=c("OSM (default)", "ESRI Topo", "ESRI Satellite"),
+										 overlayGroups = c("traps", "traps buffer", names(habrasproj), "density raster"),
+										 options=layersControlOptions(collapsed=FALSE)) %>%
+		hideGroup(c("traps buffer", "traps"))
+})
+
+} #end server
 

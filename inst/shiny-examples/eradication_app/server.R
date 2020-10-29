@@ -140,7 +140,6 @@ fit_mod<-reactive({
        K<-K()
        #extract habitat variables only for spatial models, not otherwise
        if(modname!="remCE" & modname!="remGP") {site.data<-habmean()}
-       print(site.data)
 if(modname== "remCE")    {catch<- apply(removals,2,sum)
                           effort<- colSums(!is.na(removals)) #number of non NA removal results at each time
 	                        model<-remCE(catch, effort, nboot=50)}  else
@@ -152,22 +151,24 @@ if(modname== "remGP")    {catch<- apply(removals,2,sum)
 	                       emf<- eFrameGP(catch, effort, index, ieffort)
 	                       model<- remGP(emf) } else
 if(modname== "remGR")    {emf<- eFrameGR(y=removals,
-																				 numPrimary=ncol(removals),
+																				 numPrimary=1,
 																				 siteCovs = site.data)
-                         print("data collated")
-                         print(state_formula())
 		                     model<- remGR(lamformula=as.formula(state_formula()), #weird requirement to make the formula string a formula!
 		                     							phiformula = ~1,
 		                     							detformula = ~1,
 		                     							data=emf,
 		                     							K=K)
 		                     } else
-if(modname== "remGRM"  ) {emf<- eFrameGRM(removals,
-																					detections,
+if(modname== "remGRM"  ) {emf<- eFrameGRM(y=removals,     #removal data
+																					ym=detections,  #these are secondary monitoring detection data
 																					numPrimary=1,
-																					type="removal",
 																					siteCovs = site.data)
-		                     model<- eradicate::remGRM(state_formula(), ~1, ~1, ~1, data=emf, K=K)} else
+		                     model<- remGRM(lamformula=as.formula(state_formula()),
+		                     							 phiformula=~1,
+		                     							 detformula=~1,
+		                     							 mdetformula=~1,
+		                     							 data=emf,
+		                     							 K=K)} else
 if(modname== "remMN" )   {emf<-eFrameR(y=removals, siteCovs=site.data, obsCovs=NULL) #specify details
 	                        model<-remMN(lamformula=state_formula(), detformula = ~1, data=emf)} else
 if(modname== "remMNO" )  {emf=eFrameMNO()#specify details of data structure TBD
@@ -237,12 +238,15 @@ AIC<-reactive({
 abund_tab<-reactive({
 	modname<-ModToFit()
 	mod<-fit_mod()
-	buff<-buff()  #buffer zone radius
-	#If occupancy, no buffer offset applies, else offset estimate with buffer area
-	if(modname!="remCE") {out<-calcN(mod)} else
+	buff<-buff()  #buffer zone radius (for later implementation of extrapolation calculation)
 	if(modname=="remCE") {out<-data.frame(mod$results)[1,]
-	                      out<-data.frame("Parameter"="N", out)
-	names(out)<-c("Parameter", "Estimate", "SE", "Lwr95", "Upp95", "CV") }
+	                      out<-data.frame("Parameter"="N", out) } else
+          {out<-calcN(mod)
+		       tmp<-rbind(out$Nhat, out$Nresid)
+           out<-data.frame("Parameter"=c("Nhat", "Nresid"), tmp, "CV"=NA)
+	                                         print(out)
+          }
+	names(out)<-c("Parameter", "Estimate", "SE", "Lwr95", "Upp95", "CV")
 	out
 })
 

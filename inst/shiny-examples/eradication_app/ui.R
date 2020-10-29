@@ -24,7 +24,7 @@ ui<-fluidPage(
 								 				 						 						 "remGR"="remGR",
 								 				 						 						 "remGRM"="remGRM",
 								 				 						 						 "remMN"="remMN",
-								 				 						 						 "remMN"="remMNO",
+								 				 						 						 "remMNO"="remMNO",
 								 				 						 						 "occuMS"="occuMS"
 								 				 						 ), selected="remCE")),
 								 	#conditionally take input for parameter K, depending on model type.

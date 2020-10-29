@@ -401,15 +401,15 @@ observeEvent(input$EstDens, {
 	habrasproj<-projectRaster(habras, crs="+init=epsg:4326", method="bilinear")
 	pal <- colorNumeric("Reds", values(DensRastProj), na.color = "transparent")
 	leafletProxy("map") %>%
-		clearImages() %>%
-		clearControls() %>%
+		clearGroup("density raster") %>%
+		removeControl("denslegend") %>%
 		addRasterImage(DensRastProj, colors=pal, layerId = "PestDensity",
 									 opacity=transparency, group="density raster") %>%
-		addLegend(position="bottomright", pal=pal, bins=6, title=leglab, values=values(DensRastProj)) %>%
+		addLegend(position="bottomright", layerId = "denslegend", pal=pal, bins=6, title=leglab, values=values(DensRastProj)) %>%
 		addLayersControl(baseGroups=c("OSM (default)", "ESRI Topo", "ESRI Satellite"),
 										 overlayGroups = c("traps", "traps buffer", names(habrasproj), "density raster"),
 										 options=layersControlOptions(collapsed=FALSE)) %>%
-		hideGroup(c("traps buffer", "traps"))
+		hideGroup(c("traps buffer", "traps", names(habrasproj)))
 })
 
 } #end server

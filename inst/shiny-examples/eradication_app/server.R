@@ -16,8 +16,7 @@ server<-function(input, output, session){
 #upload rasters of habitat variables. default is San Nicolas
 	hab_raster<-reactive({
 		if(is.null(input$habitat_rasters))
-		{habras<-stack(system.file("extdata", "san_nic_habitat.tif", package="eradicate"))
-		names(habras)<-"san_nic_habitat" } else
+		{habras<-NULL } else
 		{
 			#habras<-stack(input$habitat_raster$datapath)
 			nrast<-nrow(input$habitat_rasters)
@@ -31,7 +30,7 @@ server<-function(input, output, session){
 #csv of trap locations.
 traps<-reactive({
 		if(is.null(input$traps))
-			{traps<-eradicate::san_nic_rem$traps} else
+			{traps<-NULL} else
 			{traps<-read_csv(input$traps$datapath) }
 		traps
 	})
@@ -249,7 +248,6 @@ abund_tab<-reactive({
           {out<-calcN(mod)
 		       tmp<-rbind(out$Nhat, out$Nresid)
            out<-data.frame("Parameter"=c("Nhat", "Nresid"), tmp, "CV"=NA)
-	                                         print(out)
           }
 	names(out)<-c("Parameter", "Estimate", "SE", "Lwr95", "Upp95", "CV")
 	out
@@ -344,13 +342,16 @@ output$map<-renderLeaflet({
 	bound<-site_bound()
 	opacity<-habopacity()
 	transparency<-1-opacity
-
-	traps<-st_as_sf(traps(), coords = c("x", "y"), crs=st_crs(bound))
+  traps<-traps()
+  if(!is.null(traps)){
+	traps<-st_as_sf(traps, coords = c("x", "y"), crs=st_crs(bound))
 	traps_buff<-st_buffer(traps, dist=buff())
+  } else {traps<-NULL; traps_buff<-NULL}
 	habras<-hab_raster()
+	if(!is.null(habras)){
 	crs(habras)<-crs(bound) #assume same crs as region boundary
 	habrasproj<-projectRaster(habras, crs="+init=epsg:4326", method="bilinear")
-	nrast<-nlayers(habrasproj) #how many habitat rasters in the stack?
+	nrast<-nlayers(habrasproj)} else {nrast<-0; habrasproj<-NULL} #how many habitat rasters in the stack?
 	palvec<-c("viridis", "magma", "plasma", "inferno")
 	m<-leaflet() %>%
 		addTiles(group="OSM") %>%

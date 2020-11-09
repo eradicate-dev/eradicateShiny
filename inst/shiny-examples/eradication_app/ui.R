@@ -17,17 +17,20 @@ ui<-fluidPage(
 	sidebarLayout(
 		sidebarPanel(#INPUT THE REGION, detector and detections FILEs ---------------------------------------------------
 								 fluidRow(
-								 	column(6,
-								 				 radioButtons(inputId="Model", label="Select model",
+								 	column(7,
+								 				 tipify(radioButtons(inputId="Model", label="Select model",
 								 				 						 choices=list("remGP (aspatial)"="remGP", #have remove remCE and remGR
 								 				 						 						 "remMN"="remMN",  #equivalent to remGR
 								 				 						 						 "remGRM"="remGRM"#,
 								 				 						 					#	 "remMNO"="remMNO", #hidden remMNO and occuMS for now
 								 				 						 					#	 "occuMS"="occuMS"
-								 				 						 ), selected="remMN")),
+								 				 						 ), selected="remMN"), "remGP-aspatial removal data<br>remMN-spatially referenced removal data<br>remGRM-spatially referenced removal data with auxilary detections")
+								 				 ),
 								 	#conditionally take input for parameter K, depending on model type.
 								 	conditionalPanel("input.Model!='remCE'&&input.Model!='remMN'&&input.Model!='occuMS'",
-								 									 column(2, numericInput(inputId="K", label="K", min=1, max=NA, value=50, step=1)
+								 									 column(2,
+								 									 			 tipify(
+								 									 			 numericInput(inputId="K", label="K", min=1, max=NA, value=50, step=1), "upper bound for integration of abundance")
 								 									 ))),
 								 hr(),
 								 wellPanel(

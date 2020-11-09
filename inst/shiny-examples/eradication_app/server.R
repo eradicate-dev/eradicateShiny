@@ -232,10 +232,10 @@ summary_tab<-reactive({
 AIC<-reactive({
 	mod<-fit_mod()
 	mod_type<-ModToFit()
-	if(mod_type!="remCE"){
+	if(mod_type!="remGP"){
 	   AIC<-mod$AIC
 	   out<-paste0("AIC=",round(AIC, 2))} else
-	if(mod_type=="remCE"){out<-NULL}  #no AIC for remCE
+	if(mod_type=="remGP"){out<-NULL}  #no AIC for remGP
 	  return(out)
 })
 

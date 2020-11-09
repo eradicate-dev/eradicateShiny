@@ -19,14 +19,12 @@ ui<-fluidPage(
 								 fluidRow(
 								 	column(6,
 								 				 radioButtons(inputId="Model", label="Select model",
-								 				 						 choices=list("remCE (aspatial)"="remCE",
-								 				 						 						 "remGP (aspatial)"="remGP",
-								 				 						 						 "remGR"="remGR",
-								 				 						 						 "remGRM"="remGRM",
-								 				 						 						 "remMN"="remMN",
-								 				 						 						 "remMNO"="remMNO",
-								 				 						 						 "occuMS"="occuMS"
-								 				 						 ), selected="remCE")),
+								 				 						 choices=list("remGP (aspatial)"="remGP", #have remove remCE and remGR
+								 				 						 						 "remMN"="remMN",  #equivalent to remGR
+								 				 						 						 "remGRM"="remGRM"#,
+								 				 						 					#	 "remMNO"="remMNO", #hidden remMNO and occuMS for now
+								 				 						 					#	 "occuMS"="occuMS"
+								 				 						 ), selected="remMN")),
 								 	#conditionally take input for parameter K, depending on model type.
 								 	conditionalPanel("input.Model!='remCE'&&input.Model!='remMN'&&input.Model!='occuMS'",
 								 									 column(2, numericInput(inputId="K", label="K", min=1, max=NA, value=50, step=1)
@@ -47,7 +45,8 @@ ui<-fluidPage(
 								 fileInput(inputId="detections", label="Detection histories (.csv)", accept=c("text/csv", ".csv"))), #end conditional block?
 								 fluidRow(
 								 	column(4,
-								 numericInput("nights", "Nights per primary session", min=0, max=NA, value=10, step=1)))
+								 conditionalPanel("input.Model=='remMNO' | input.Model=='occuMS'",
+								 numericInput("nights", "Nights per primary session", min=0, max=NA, value=10, step=1))))
 								 ),
 								 hr(),
 								 fluidRow(

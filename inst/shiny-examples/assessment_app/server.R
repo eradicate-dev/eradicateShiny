@@ -50,12 +50,14 @@ countREST<-reactive({
 
 stayREST<-reactive({
 	if(is.null(input$stayREST)) {stayREST<-NULL} else
-	{stayREST<-read_csv(input$stayREST$datapath)}
+	{stayREST<-data.frame(read_csv(input$stayREST$datapath))}
+	return(stayREST[,1])
 })
 
 censREST<-reactive({
 	if(is.null(input$censREST)) {censREST<-NULL} else
-	{censREST<-read_csv(input$censREST$datapath)}
+	{censREST<-data.frame(read_csv(input$censREST$datapath))}
+	return(censREST[,1])
 })
 
 

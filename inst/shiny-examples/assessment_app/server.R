@@ -287,9 +287,11 @@ output$map<-renderLeaflet({
 	detectors<-st_as_sf(detectors(), coords = c("x", "y"), crs=st_crs(bound))
 	detector_buff<-st_buffer(detectors, dist=buff())
 	habras<-hab_raster()
-  crs(habras)<-crs(bound) #assume same crs as region boundary
-  habrasproj<-projectRaster(habras, crs="+init=epsg:4326", method="bilinear")
-  nrast<-nlayers(habrasproj) #how many habitat rasters in the stack?
+	#handling case where there are no habitat rasters
+	if(!is.null(habras)){
+		crs(habras)<-crs(bound) #assume same crs as region boundary
+		habrasproj<-projectRaster(habras, crs="+init=epsg:4326", method="bilinear")
+		nrast<-nlayers(habrasproj)} else {nrast<-0; habrasproj<-NULL} #how many habitat rasters in the stack?
 	palvec<-c("viridis", "magma", "plasma", "inferno")
   m<-leaflet() %>%
 		addTiles(group="OSM") %>%

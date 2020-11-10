@@ -30,9 +30,9 @@ ui<-fluidPage(
 								 tipify(fileInput(inputId="boundary", label="Region boundary (.shp)",
 								 					multiple=TRUE,  accept=c('.shp','.dbf','.sbn','.sbx','.shx','.prj')),
 								 			   "Component files of an ESRI shapefile for the site boundary. The shapefile should be projected, not geographic"),
-								 tipify(fileInput(inputId="habitat_rasters", label="Habitat raster (.tif, .asc)",
-								 					multiple=TRUE, accept=c(".tif", ".asc")),
-								 			   "Raster files (.tif or .asc) of habitat covariates in the same projection as the boundary.
+								 tipify(fileInput(inputId="habitat_rasters", label="Habitat raster (.tif)",
+								 					multiple=TRUE, accept=c(".tif")),
+								 			   "Raster files (.tif) of habitat covariates in the same projection as the boundary.
 								 			    All rasters must have the same extent and resolution"),
 								 tipify(fileInput(inputId="detectors", label="Detector locations (.csv)", accept=c("text/csv", ".csv")),
 								 "csv file containing the x-y coordinates of the detector devices"),
@@ -54,10 +54,10 @@ ui<-fluidPage(
 								 				 			 "Number of hours per day active")),
 								 	column(4,
 								 		tipify(numericInput(inputId="areaREST", label="Area of camera viewshed", value=2.67),
-								 			 "Camera viewshed area use multiplier argument to rescale (m2) to (ha) as required. m2 -> ha:10000")),
+								 			 "Camera viewshed area. Use multiplier input to rescale units as required")),
 								 column(5,
 								 			 tipify(numericInput(inputId="viewshedMultiplier", label="Viewshed area multiplier", value=1000000),
-								 			 			 "Muliplier to convert viewshed area units to map area units m2:ha=>10000, m2:km2=>1000000"))
+								 			 			 "Muliplier to convert viewshed area units to map area units m2:ha=>10,000, m2:km2=>1,000,000"))
 								 )),
 								 ),
 								 hr(),

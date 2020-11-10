@@ -15,9 +15,7 @@ site_bound<-reactive({
 	})
 #raster of habitat suitability. default is San Nicolas
 hab_raster<-reactive({
-	if(is.null(input$habitat_rasters))
-	{habras<-stack(system.file("extdata", "san_nic_habitat.tif", package="eradicate"))
-	names(habras)<-"san_nic_habitat" } else
+	if(is.null(input$habitat_rasters)) {habras<-NULL } else
 	{
 		#habras<-stack(input$habitat_raster$datapath)
 		nrast<-nrow(input$habitat_rasters)
@@ -32,36 +30,31 @@ hab_raster<-reactive({
 
 #csv of detectors. default is San Nicolas
 detectors<-reactive({
-		if(is.null(input$detectors))
-			{traps<-eradicate::san_nic_pre$traps} else
+		if(is.null(input$detectors)) {detectors<-NULL} else
 			{traps<-read_csv(input$detectors$datapath) }
 		traps
 	})
 
 #counts
 counts<-reactive({
-		if(is.null(input$counts))
-		{counts<-eradicate::san_nic_pre$counts} else
+		if(is.null(input$counts)) {counts<-NULL} else
 		{counts<-read_csv(input$counts$datapath) }
 		counts
 	})
 
 #special reactive inputs for the REST model-----------------------------------------------------------
 countREST<-reactive({
-	if(is.null(input$countREST))
-		{countREST<-eradicate::san_nic_rest$y} else
+	if(is.null(input$countREST)) {countREST<-NULL} else
 		{countREST<-read_csv(input$countREST$datapath)}
 })
 
 stayREST<-reactive({
-	if(is.null(input$stayREST))
-	{stayREST<-eradicate::san_nic_rest$stay} else
+	if(is.null(input$stayREST)) {stayREST<-NULL} else
 	{stayREST<-read_csv(input$stayREST$datapath)}
 })
 
 censREST<-reactive({
-	if(is.null(input$censREST))
-	{censREST<-eradicate::san_nic_rest$cens} else
+	if(is.null(input$censREST)) {censREST<-NULL} else
 	{censREST<-read_csv(input$censREST$datapath)}
 })
 

@@ -7,3 +7,4 @@ output: html_document
 
 ## Skeleton help file for the eradication app
 
+content to be added

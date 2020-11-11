@@ -1,5 +1,18 @@
 #this is the app for monitoring eradication assessment using a variety of removal models
 #relies on the functions in the eradicate package
+require(shiny)
+require(shinycssloaders)
+require(shinyBS)
+require(waiter)
+require(sf)
+require(raster)
+require(tidyverse)
+require(R.utils)
+require(eradicate)
+require(leaflet)
+require(rgdal)
+require(rgeos)
+require(xtable)
 ##DEFINE THE USER INTERFACE################################################################################################
 ui<-fluidPage(
 	#splashscreen

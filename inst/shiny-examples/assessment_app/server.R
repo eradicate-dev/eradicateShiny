@@ -1,4 +1,5 @@
 ##DEFINE THE SERVER#####################################################################################################
+
 server<-function(input, output, session){
 	#splashscreen
 	Sys.sleep(4.5) # delay

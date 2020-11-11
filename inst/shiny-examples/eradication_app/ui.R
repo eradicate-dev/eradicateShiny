@@ -13,6 +13,7 @@ require(leaflet)
 require(rgdal)
 require(rgeos)
 require(xtable)
+require(markdown)
 ##DEFINE THE USER INTERFACE################################################################################################
 ui<-fluidPage(
 	#splashscreen
@@ -103,7 +104,8 @@ ui<-fluidPage(
 													    fluidRow( tableOutput(outputId="parameter_table") %>% withSpinner(type=4)),
 													    fluidRow( tableOutput(outputId="abundance_table")),
 													    fluidRow( textOutput(outputId="AIC") ),
-													 ))
+													 ),
+									tabPanel(title="Help", value="panel3", includeMarkdown("eradication_help.md")))
 		)
 	)
 )

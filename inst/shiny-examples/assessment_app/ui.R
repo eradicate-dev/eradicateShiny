@@ -13,6 +13,7 @@ require(leaflet)
 require(rgdal)
 require(rgeos)
 require(xtable)
+require(markdown)
 ##DEFINE THE USER INTERFACE################################################################################################
 ui<-fluidPage(
 	#splashscreen
@@ -106,7 +107,8 @@ ui<-fluidPage(
 													    fluidRow( tableOutput(outputId="parameter_table") %>% withSpinner(type=4)),
 													    fluidRow( tableOutput(outputId="abundance_table") ),
 													    fluidRow( textOutput(outputId="AIC") ),
-													 ))
+													 ),
+									tabPanel(title="Help", value="panel3", includeMarkdown("assessment_help.md")))
 		)
 	),
 	bsTooltip("K", 'K parameter for Royle-Nichols and N-mixture models. The app calculates a sensible default. Large values will increase computation time significantly.')

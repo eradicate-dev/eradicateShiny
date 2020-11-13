@@ -344,7 +344,7 @@ output$map<-renderLeaflet({
 	transparency<-1-opacity
   traps<-traps()
   if(!is.null(traps)){
-	traps<-st_as_sf(traps, coords = c("x", "y"), crs=st_crs(bound))
+	traps<-st_as_sf(traps, coords = c(1, 2), crs=st_crs(bound))
 	traps_buff<-st_buffer(traps, dist=buff())
   } else {traps<-NULL; traps_buff<-NULL}
 	habras<-hab_raster()

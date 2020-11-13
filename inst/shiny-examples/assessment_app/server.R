@@ -287,7 +287,7 @@ output$map<-renderLeaflet({
 	bound<-site_bound()
 	opacity<-habopacity()
 	transparency<-1-opacity
-	detectors<-st_as_sf(detectors(), coords = c("x", "y"), crs=st_crs(bound))
+	detectors<-st_as_sf(detectors(), coords = c(1, 2), crs=st_crs(bound))
 	detector_buff<-st_buffer(detectors, dist=buff())
 	habras<-hab_raster()
 	#handling case where there are no habitat rasters

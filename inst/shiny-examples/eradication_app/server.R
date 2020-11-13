@@ -98,8 +98,8 @@ habmean<-reactive({
 	rast<-hab_raster()
 	buff<-buff()
 	traps<-traps()
-	if(buff==0){habvals<-raster::extract(rast, dets, df=TRUE)} else
-	{habvals<-raster::extract(rast, dets, buffer=buff, fun=mean, df=TRUE)}
+	if(buff==0){habvals<-raster::extract(rast, traps, df=TRUE)} else
+	{habvals<-raster::extract(rast, traps, buffer=buff, fun=mean, df=TRUE)}
 	habvals
 })
 
@@ -303,26 +303,26 @@ DensRast<-reactive({
 #render a table of parameter estimates
 output$parameter_table<-renderTable({
 req(input$Run_model)
-  summary_tab()
+  isolate(summary_tab())
 }, row.names=FALSE, width=300, caption="Parameter estimates", caption.placement = "top")
 
 output$removal_plot<-renderPlot({
-	removal_plot()
+	isolate(removal_plot())
 })
 
 output$detection_plot<-renderPlot({
-	detection_plot()
+	isolate(detection_plot())
 })
 
 #render table of abundance estimates
 output$abundance_table<-renderTable({
 	req(input$Run_model)
-	abund_tab()
+	isolate(abund_tab())
 }, row.names=FALSE, width=300, caption="Abundances", caption.placement = "top")
 
 output$AIC <-renderText({
 	req(input$Run_model)
-	AIC()
+	isolate(AIC())
 })
 
 #download the density raster

@@ -253,13 +253,13 @@ DensRast<-reactive({
 #render a table of parameter estimates
 output$parameter_table<-renderTable({
 req(input$Run_model)
-  summary_tab()
+  isolate(summary_tab())
 }, row.names=FALSE, width=300, caption="Parameter estimates", caption.placement = "top")
 
 #render table of abundance estimates
 output$abundance_table<-renderTable({
 	req(input$Run_model)
-	abund_tab()
+	isolate(abund_tab())
 }, row.names=FALSE, width=300,
    caption="Real estimates",
 caption.placement = getOption("xtable.caption.placement", "top"),
@@ -267,7 +267,7 @@ caption.width = getOption("xtable.caption.width", NULL))
 
 output$AIC <-renderText({
 	req(input$Run_model)
-	AIC()
+	isolate(AIC())
 })
 
 #download the density raster

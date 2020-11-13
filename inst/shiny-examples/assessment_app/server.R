@@ -91,7 +91,8 @@ habmean<-reactive({
 	rast<-hab_raster()
 	buff<-buff()
 	dets<-detectors()
-	habvals<-raster::extract(rast, dets, buffer=buff, fun=mean, df=TRUE)
+	if(buff==0)		{habvals<-raster::extract(rast, dets, df=TRUE)} else
+		            {habvals<-raster::extract(rast, dets, buffer=buff, fun=mean, df=TRUE)}
 	habvals
 })
 

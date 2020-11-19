@@ -105,7 +105,7 @@ ui<-fluidPage(
 													    fluidRow( tableOutput(outputId="abundance_table")),
 													    fluidRow( textOutput(outputId="AIC") ),
 													 ),
-									tabPanel(title="Help", value="panel3", includeMarkdown("eradication_help.md")))
+									tabPanel(title="Help", value="panel3", includeMarkdown("progress_help.md")))
 		)
 	)
 )

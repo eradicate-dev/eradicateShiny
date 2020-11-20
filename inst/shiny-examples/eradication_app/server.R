@@ -88,7 +88,7 @@ observeEvent(input$EstDens, {
 	updateTabsetPanel(session, "maintabs",
 										selected = "panel1")
 })
-observe(if(input$Model!="RemMN" & input$Model!="RemCE" & input$Model!="occuMS" ) {
+observe(if(input$Model!="remMN" & input$Model!="occuMS" ) {
 	updateNumericInput(session, "K", value=5*max(detections()) + 50) #sets default value for K on model select
 })
 ###################################################################################################
@@ -188,20 +188,26 @@ model
 #removal plot
 removal_plot<-reactive({
 	removals<-removals()
-	detections<-detections()
-	y=c(0, cumsum(colSums(removals)))
-	x=0:ncol(removals)
-	plot(y=y, x=x, type="o", col="red", las=1, pch=16, ylim=c(0, max(y)),
-			 xlab="Primary Sessions", ylab="Cumulative removals", main="Cumulative removals")
+	catch<- apply(removals,2,sum,na.rm=TRUE)
+	effort<- rep(nrow(removals), length(catch))
+	cpue<- catch/effort
+	ccatch<- cumsum(catch)
+	m<- coef(lm(cpue ~ ccatch))
+	plot(x=ccatch, y=cpue, type="p", col="red", las=1, pch=16,
+			 xlab="CPUE", ylab="Cumulative removals", main="Cumulative catch vs CPUE")
+	abline(a=m[1],b=m[2])
 })
 
 detection_plot<-reactive({
-	removals<-removals()
 	detections<-detections()
-	y=c(0, cumsum(colSums(detections)))
-	x=0:ncol(detections)
-	plot(y=y, x=x, type="o", col="blue", las=1, pch=16, ylim=c(0, max(y)),
-			 xlab="Primary Sessions", ylab="Cumulative detections", main="Cumulative detections")
+	catch<- apply(detections,2,sum,na.rm=TRUE)
+	effort<- rep(nrow(detections), length(catch))
+	cpue<- catch/effort
+	ccatch<- cumsum(catch)
+	m<- coef(lm(cpue ~ ccatch))
+	plot(x=ccatch, y=cpue, type="p", col="red", las=1, pch=16,
+			 xlab="CPUE", ylab="Cumulative detections", main="Cumulative detections")
+	abline(a=m[1],b=m[2])
 })
 
 

@@ -201,7 +201,12 @@ abund_tab<-reactive({
   if(modname=="Occ"){out<-Nhat$Occ} else
   if(modname=="RN"){out<-Nhat$Nhat} else
   if(modname=="Nmix"){out<-Nhat$Nhat} else
-  if(modname=="REST"){out<-Nhat$Nhat}
+  if(modname=="REST"){
+  	rast<-hab_raster()
+  	newdat<- as.data.frame(rast)
+  	offset<- prod(res(rast))/viewshedMultiplier()
+  	Nhat<- calcN(mod, newdata=newdat, off.set = offset)
+  	out<-Nhat$Nhat}
 	out
 })
 

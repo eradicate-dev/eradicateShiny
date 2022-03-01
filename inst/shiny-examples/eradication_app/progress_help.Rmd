@@ -3,6 +3,7 @@ title: "Eradication Tools - Eradication progress"
 author: "Dave Ramsey & Michael Scroggie"
 date: "17/11/2020"
 output:
+  word_document: default
   md_document: default
   html_document: default
 ---

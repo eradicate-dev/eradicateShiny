@@ -152,4 +152,5 @@ estimation of important population parameters. Canadian Journal of
 Fisheries and Aquatic Sciences, 54, 890–897.
 
 Haines, L. M. (2019). Multinomial N-mixture models for removal sampling.
-Biometrics, September, 1–9. <https://doi.org/10.1111/biom.13147>
+Biometrics, September, 1–9.
+<a href="https://doi.org/10.1111/biom.13147" class="uri">https://doi.org/10.1111/biom.13147</a>

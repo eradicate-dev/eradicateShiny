@@ -52,16 +52,7 @@ countREST<-reactive({
 stayREST<-reactive({
 	if(is.null(input$stayREST)) {stayREST<-NULL} else
 	{stayREST<-data.frame(read_csv(input$stayREST$datapath))}
-	return(stayREST[,1])
 })
-
-censREST<-reactive({
-	if(is.null(input$censREST)) {censREST<-NULL} else
-	{censREST<-data.frame(read_csv(input$censREST$datapath))}
-	return(censREST[,1])
-})
-
-
 
 areaREST<-reactive({
   input$areaREST
@@ -90,6 +81,7 @@ activeREST<-reactive({
 habmean<-reactive({
 	rast<-hab_raster()
 	buff<-buff()
+	browser()
 	dets<-detectors()
 	if(buff==0)		{habvals<-raster::extract(rast, dets, df=TRUE)} else
 		            {habvals<-raster::extract(rast, dets, buffer=buff, fun=mean, df=TRUE)}
@@ -105,6 +97,10 @@ var_names<-reactive({
 #observer to update checkboxlist for habitat rasters
 observeEvent(var_names(),
 						 updateCheckboxGroupInput(session, inputId="state_formula", "habitat covariates",
+						 												 choices=var_names()))
+
+observeEvent(var_names(),
+						 updateCheckboxGroupInput(session, inputId="state_factors", "habitat factor",
 						 												 choices=var_names()))
 
 #############################################################
@@ -124,7 +120,7 @@ observeEvent(input$EstDens, {
 										selected = "panel1")
 })
 #disable K if using occupancy model
-observe(if(input$Model!="Occ") {
+observe(if(input$Model!="Occ" | input$Model != "REST") {
 	updateNumericInput(session, "K", value=5*max(counts()) + 50) #sets default value for K
 })
 
@@ -158,8 +154,8 @@ if(modname!= "REST"){emf<- eradicate::eFrame(cnts, siteCovs = data.frame(habmean
                     {
                       Amult<-viewshedMultiplier()
                     	emf<- eFrameREST(y=countREST(),
-                    									stay=stayREST(),
-                    									cens=censREST(),
+                    									stay=stayREST()[,1],
+                    									cens=stayREST()[,2],
                     									area=areaREST()/viewshedMultiplier(),
                     									active_hours=activeREST(),
                     									siteCovs = data.frame(habmean))}

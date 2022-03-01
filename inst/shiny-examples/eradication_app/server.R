@@ -27,6 +27,14 @@ server<-function(input, output, session){
 		}
 		habras
 	})
+#csv of non-spatial catch effort data
+cedata<-reactive({
+		if(is.null(input$cedata))
+		{cedata<- NULL} else
+		{cedata<-read_csv(input$cedata$datapath) }
+		cedata
+	})
+
 #csv of trap locations.
 traps<-reactive({
 		if(is.null(input$traps))
@@ -137,6 +145,7 @@ state_formula<-reactive({
 
 #fit the selected model to the data.
 fit_mod<-reactive({
+			 cedata<- cedata()
        traps<- traps()
        removals<-removals()
        detections<-detections()
@@ -144,16 +153,9 @@ fit_mod<-reactive({
        modname<-ModToFit()
        K<-K()
        #extract habitat variables only for spatial models, not otherwise
-       if(modname!="remCE" & modname!="remGP") {site.data<-habmean()}
-if(modname== "remCE")    {catch<- apply(removals,2,sum)
-                          effort<- colSums(!is.na(removals)) #number of non NA removal results at each time
-	                        model<-remCE(catch, effort, nboot=50)}  else
-if(modname== "remGP")    {catch<- apply(removals,2,sum)
-	                        effort<- rep(nrow(removals), length(catch))
-	                       # extra monitoring/effort data
-	                       index<- apply(detections,2,sum)
-	                       ieffort<- rep(nrow(detections), length(index))
-	                       emf<- eFrameGP(catch, effort, index, ieffort)
+       if(modname!="remGP") {site.data<-habmean()}
+if(modname== "remGP")    {emf<- eFrameGP(cedata$catch, cedata$effort)
+
 	                       model<- remGP(emf) } else
 if(modname== "remGR")    {emf<- eFrameGR(y=removals,
 																				 numPrimary=1,
@@ -217,7 +219,6 @@ detection_plot<-reactive({
 summary_tab<-reactive({
 	mod<-fit_mod()
 	mod_type<-ModToFit()
-	if(mod_type!="remCE"){
 	out<-summary(mod)
 	state_tab<-out[[1]]
 	state_tab<-data.frame("Type"="State","Covariate"=row.names(state_tab), state_tab)
@@ -225,13 +226,7 @@ summary_tab<-reactive({
 	detect_tab<-data.frame("Type"="Detect","Covariate"=row.names(detect_tab), detect_tab)
 	out<-rbind(state_tab, detect_tab)
 	data.frame(out)
-	names(out)[6]<-"p"} else
-   if(mod_type=="remCE"){  #CE model doesn't have a summary method
-   	out<-data.frame(mod$results)[2,]
-   	out<-data.frame("Parameter"="lambda", out)
-   	names(out)<-c("Parameter", "Estimate", "SE", "Lwr95", "Upp95", "CV")
-   	out<-out[,1:3]  #hide unwanted columns for now
-   }
+	names(out)[6]<-"p"
 	return(out)
 })
 
@@ -250,13 +245,17 @@ abund_tab<-reactive({
 	modname<-ModToFit()
 	mod<-fit_mod()
 	buff<-buff()  #buffer zone radius (for later implementation of extrapolation calculation)
-	if(modname=="remCE") {out<-data.frame(mod$results)[1,]
-	                      out<-data.frame("Parameter"="N", out) } else
-          {out<-calcN(mod)
+	if(modname=="remGP") {
+					 out<-calcN(mod, CI.calc="norm")
+					 tmp<-rbind(out$Nhat, out$Nresid)
+					 out<-data.frame("Parameter"=c("Nhat", "Nresid"), tmp)
+	                      } else
+          {
+           out<-calcN(mod)
 		       tmp<-rbind(out$Nhat, out$Nresid)
-           out<-data.frame("Parameter"=c("Nhat", "Nresid"), tmp, "CV"=NA)
+           out<-data.frame("Parameter"=c("Nhat", "Nresid"), tmp)
           }
-	names(out)<-c("Parameter", "Estimate", "SE", "Lwr95", "Upp95", "CV")
+	names(out)<-c("Parameter", "Estimate", "SE", "Lwr95", "Upp95")
 	out
 })
 

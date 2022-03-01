@@ -33,33 +33,35 @@ ui<-fluidPage(
 								 fluidRow(
 								 	column(7,
 								 				 tipify(radioButtons(inputId="Model", label="Select model",
-								 				 						 choices=list("remGP (aspatial)"="remGP", #have remove remCE and remGR
-								 				 						 						 "remMN"="remMN",  #equivalent to remGR
-								 				 						 						 "remGRM"="remGRM"#,
+								 				 						 choices=list("Nonspatial removals (single or multi-season)"="remGP",
+								 				 						 						 "Spatial removal data (single season)"="remMN",
+								 				 						 						 "Spatial removal data with auxilary detections (single season)"="remGRM"#,
 								 				 						 					#	 "remMNO"="remMNO", #hidden remMNO and occuMS for now
 								 				 						 					#	 "occuMS"="occuMS"
 								 				 						 ), selected="remMN"), "remGP-aspatial removal data<br>remMN-spatially referenced removal data<br>remGRM-spatially referenced removal data with auxilary detections")
 								 				 ),
 								 	#conditionally take input for parameter K, depending on model type.
-								 	conditionalPanel("input.Model!='remCE'&&input.Model!='remMN'&&input.Model!='occuMS'",
+								 	conditionalPanel("input.Model!='remMN'&&input.Model!='occuMS'",
 								 									 column(2,
 								 									 			 tipify(
 								 									 			 numericInput(inputId="K", label="K", min=1, max=NA, value=50, step=1), "upper bound for integration of abundance")
 								 									 ))),
 								 hr(),
 								 wellPanel(
+								 	conditionalPanel("input.Model=='remGP'",
+								 									 fileInput(inputId="cedata", label="Catch and Effort data (.csv)", accept=c("text/csv", ".csv"))),
 								 	#hide spatial input tools if using an aspatial model
-								 	conditionalPanel("input.Model!='remCE'&&input.Model!='remGP'",
+								 	conditionalPanel("input.Model!='remGP'",
 								 fileInput(inputId="boundary", label="Region boundary (.shp)",
 								 					multiple=TRUE,  accept=c('.shp','.dbf','.sbn','.sbx','.shx','.prj')),
 								 tipify(fileInput(inputId="habitat_rasters", label="Habitat raster (.tif)",
 								 								 multiple=TRUE, accept=c(".tif")),
 								 			 "Raster files (.tif) of habitat covariates in the same projection as the boundary.
 								 			    All rasters must have the same extent and resolution"),
-								 fileInput(inputId="traps", label="Trap locations (.csv)", accept=c("text/csv", ".csv"))), #end conditional block
-								 fileInput(inputId="removals", label="Removal histories (.csv)", accept=c("text/csv", ".csv")),
+								 fileInput(inputId="traps", label="Trap locations (.csv)", accept=c("text/csv", ".csv")),
+								 fileInput(inputId="removals", label="Removal histories(.csv)", accept=c("text/csv", ".csv")),
 								 conditionalPanel("input.Model=='remGRM'",
-								 fileInput(inputId="detections", label="Detection histories (.csv)", accept=c("text/csv", ".csv"))), #end conditional block?
+								 								 fileInput(inputId="detections", label="Detection histories (.csv)", accept=c("text/csv", ".csv")))), #end conditional block
 								 fluidRow(
 								 	column(4,
 								 conditionalPanel("input.Model=='remMNO' | input.Model=='occuMS'",
@@ -68,17 +70,17 @@ ui<-fluidPage(
 								 hr(),
 								 fluidRow(
 								 	column(3,
-								 				 conditionalPanel("input.Model!='remCE'&&input.Model!='remGP'",
+								 				 conditionalPanel("input.Model!='remGP'",
 								 				 actionButton("Plot_design", "Plot map")), #end conditional
 								 				    actionButton("Plot_removal", "Plot removals")),
-								 	conditionalPanel("input.Model!='remCE'&&input.Model!='remGP'",
+								 	conditionalPanel("input.Model!='remGP'",
 								 	column(4, numericInput("habitat_radius", "Raster sampling radius", min=0, max=NA, value=500, step=50)),
 								 	column(5, sliderInput("Habitat_opacity", "Raster opacity", min=0, max=1, value=0.2, step=0.2)))
 								 ),
 								 hr(),
 								 #SELECT APPROPRIATE MODEL --------------------------------------------------------------------------
 								 fluidRow(
-								 	column(6,conditionalPanel("input.Model!='remCE'&&input.Model!='remGP'",
+								 	column(6,conditionalPanel("input.Model!='remGP'",
 								 				 tipify(checkboxGroupInput(inputId="state_formula", label="habitat covariates",
 								 				 													choices=NULL,
 								 				 													selected=NULL

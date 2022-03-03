@@ -7,7 +7,7 @@ server<-function(input, output, session){
 	site_bound<-reactive({
 		myshape<-input$boundary
 		dir<-dirname(myshape[1,4])
-		for ( i in 1:nrow(myshape)) {
+		for (i in 1:nrow(myshape)) {
 			file.rename(myshape[i,4], paste0(dir,"/",myshape[i,1]))
 		}
 		getshp <- list.files(dir, pattern="*.shp", full.names=TRUE)
@@ -28,35 +28,23 @@ server<-function(input, output, session){
 		habras
 	})
 #csv of non-spatial catch effort data
-cedata<-reactive({
-		if(is.null(input$cedata))
-		{cedata<- NULL} else
-		{cedata<-read_csv(input$cedata$datapath) }
-		cedata
+cedata<- reactive({
+	load_file(input$cedata$name, input$cedata$datapath)
 	})
 
 #csv of trap locations.
 traps<-reactive({
-		if(is.null(input$traps))
-			{traps<-NULL} else
-			{traps<-read_csv(input$traps$datapath) }
-		traps
+	load_file(input$traps$name, input$traps$datapath)
 	})
 
 #removals
 removals<-reactive({
-		if(is.null(input$removals))
-		{removals<-eradicate::san_nic_rem$rem} else
-		{removals<-read_csv(input$removals$datapath) }
-		removals
+	load_file(input$removals$name, input$removals$datapath)
 	})
 
 #passive detections
 detections<-reactive({
-	if(is.null(input$detections))
-	{detections<-eradicate::san_nic_rem$ym} else
-	{detections<-read_csv(input$detections$datapath) }
-	detections
+	load_file(input$detections$name, input$detections$datapath)
 })
 
 #how many nights per primary session?
@@ -133,7 +121,9 @@ K<-reactive({
 	input$K
 })
 
-EstDens<-reactive({input$EstDens})
+EstDens<-reactive({
+	input$EstDens
+	})
 
 state_formula<-reactive({
 	modelvars<-input$state_formula
@@ -145,27 +135,26 @@ state_formula<-reactive({
 
 #fit the selected model to the data.
 fit_mod<-reactive({
-			 cedata<- cedata()
-       traps<- traps()
-       removals<-removals()
-       detections<-detections()
-       nights<-nights()
-       modname<-ModToFit()
-       K<-K()
-       #extract habitat variables only for spatial models, not otherwise
-       if(modname!="remGP") {site.data<-habmean()}
-if(modname== "remGP")    {emf<- eFrameGP(cedata$catch, cedata$effort)
 
-	                       model<- remGP(emf) } else
-if(modname== "remGR")    {emf<- eFrameGR(y=removals,
-																				 numPrimary=1,
-																				 siteCovs = site.data)
-		                     model<- remGR(lamformula=as.formula(state_formula()), #weird requirement to make the formula string a formula!
-		                     							phiformula = ~1,
-		                     							detformula = ~1,
-		                     							data=emf,
-		                     							K=K)
-		                     } else
+ cedata <- cedata()
+ traps<- traps()
+ removals<- removals()
+ detections<- detections()
+ modname<- ModToFit()
+ nights<- nights()
+ K<- K()
+
+       #extract habitat variables only for spatial models, not otherwise
+if(modname!="remGP") {site.data<-habmean()}
+if(modname== "remGP") {if("session" %in% colnames(cedata))
+														emf<- eFrameGP(cedata$catch, cedata$effort, session=cedata$session)
+												 else
+												 		emf<- eFrameGP(cedata$catch, cedata$effort)
+	                       model<- remGP(emf)
+	                       } else
+if(modname== "remMN" )   {emf<-eFrameR(y=removals, siteCovs=site.data, obsCovs=NULL) #specify details
+	                       	model<-remMN(lamformula=state_formula(), detformula = ~1, data=emf)
+	                       } else
 if(modname== "remGRM"  ) {emf<- eFrameGRM(y=removals,     #removal data
 																					ym=detections,  #these are secondary monitoring detection data
 																					numPrimary=1,
@@ -176,10 +165,8 @@ if(modname== "remGRM"  ) {emf<- eFrameGRM(y=removals,     #removal data
 		                     							 mdetformula=~1,
 		                     							 data=emf,
 		                     							 K=K)} else
-if(modname== "remMN" )   {emf<-eFrameR(y=removals, siteCovs=site.data, obsCovs=NULL) #specify details
-	                        model<-remMN(lamformula=state_formula(), detformula = ~1, data=emf)} else
 if(modname== "remMNO" )  {emf=eFrameMNO()#specify details of data structure TBD
-	                        model=remMN(lamformula=state_formula(), gamformula=~1,
+	                        model=remMNO(lamformula=state_formula(), gamformula=~1,
 	                        						 omformula=~1, detformula = ~1, data=emf, K=K)} else
 if(modname=="occuMS")   {emf=eframeMS() #specify details of data structure TBD
                          model=occuMS(psiformula = state_formula, gamformula = ~1,
@@ -189,44 +176,56 @@ model
 
 #removal plot
 removal_plot<-reactive({
-	removals<-removals()
-	catch<- apply(removals,2,sum,na.rm=TRUE)
-	effort<- rep(nrow(removals), length(catch))
-	cpue<- catch/effort
-	ccatch<- cumsum(catch)
-	m<- coef(lm(cpue ~ ccatch))
-	plot(x=ccatch, y=cpue, type="p", col="red", las=1, pch=16,
-			 xlab="CPUE", ylab="Cumulative removals", main="Cumulative catch vs CPUE")
-	abline(a=m[1],b=m[2])
+	mod_type<- ModToFit()
+	if(mod_type == "remGP"){
+		plot_data<- cedata()
+		if(!("session" %in% colnames(plot_data)))
+			plot_data$session<- 1
+	} else if(mod_type %in% c("remMN","remGRM")) {
+		removals<-removals()
+		catch<- apply(removals,2,sum,na.rm=TRUE)
+		effort<- rep(nrow(removals), length(catch))
+		plot_data<- tibble(catch=catch, effort=effort, session=1)
+	}
+	plot_data %>% mutate(cpue = catch/effort, ccatch = cumsum(catch)) %>%
+		ggplot(aes(ccatch, cpue)) +
+		geom_point() +
+		geom_smooth(method="lm") +
+		facet_wrap(~session, scales="free") +
+		labs(x ="Cumulative removals", y="CPUE") +
+		theme_bw() +
+		theme(axis.title.x = element_text(face="bold", size=15),
+					axis.title.y = element_text(face="bold", size=15),
+					axis.text = element_text(size=12),
+					legend.position = "bottom")
 })
 
 detection_plot<-reactive({
-	detections<-detections()
+	detections<- detections()
+	mod_type<- ModToFit()
 	catch<- apply(detections,2,sum,na.rm=TRUE)
 	effort<- rep(nrow(detections), length(catch))
 	cpue<- catch/effort
 	ccatch<- cumsum(catch)
-	m<- coef(lm(cpue ~ ccatch))
-	plot(x=ccatch, y=cpue, type="p", col="red", las=1, pch=16,
-			 xlab="CPUE", ylab="Cumulative detections", main="Cumulative detections")
-	abline(a=m[1],b=m[2])
+	plot_data<- tibble(catch=catch, effort=effort, session=1)
+	plot_data %>% mutate(cpue = catch/effort, ccatch = cumsum(catch)) %>%
+		ggplot(aes(ccatch, cpue)) +
+		geom_point() +
+		geom_smooth(method="lm") +
+		facet_wrap(~session, scales="free") +
+		labs(x ="Cumulative detections", y="DPUE") +
+		theme_bw() +
+		theme(axis.title.x = element_text(face="bold", size=15),
+					axis.title.y = element_text(face="bold", size=15),
+					axis.text = element_text(size=12),
+					legend.position = "bottom")
 })
 
-
-
-#summary table of parameter estimates
 #summary table of parameter estimates for selected model
 summary_tab<-reactive({
-	mod<-fit_mod()
-	mod_type<-ModToFit()
-	out<-summary(mod)
-	state_tab<-out[[1]]
-	state_tab<-data.frame("Type"="State","Covariate"=row.names(state_tab), state_tab)
-	detect_tab<-out[[2]]
-	detect_tab<-data.frame("Type"="Detect","Covariate"=row.names(detect_tab), detect_tab)
-	out<-rbind(state_tab, detect_tab)
-	data.frame(out)
-	names(out)[6]<-"p"
+	mod<- fit_mod()
+	mod_type<- ModToFit()
+	out<- make_summary(mod, mod_type)
 	return(out)
 })
 
@@ -245,18 +244,8 @@ abund_tab<-reactive({
 	modname<-ModToFit()
 	mod<-fit_mod()
 	buff<-buff()  #buffer zone radius (for later implementation of extrapolation calculation)
-	if(modname=="remGP") {
-					 out<-calcN(mod, CI.calc="norm")
-					 tmp<-rbind(out$Nhat, out$Nresid)
-					 out<-data.frame("Parameter"=c("Nhat", "Nresid"), tmp)
-	                      } else
-          {
-           out<-calcN(mod)
-		       tmp<-rbind(out$Nhat, out$Nresid)
-           out<-data.frame("Parameter"=c("Nhat", "Nresid"), tmp)
-          }
-	names(out)<-c("Parameter", "Estimate", "SE", "Lwr95", "Upp95")
-	out
+	out<- make_abund(mod, modname)
+	return(out)
 })
 
 DensRast<-reactive({
@@ -304,15 +293,20 @@ DensRast<-reactive({
 #   --- RENDER THE OUTPUTS  ----
 #
 ###########################################################################################
+# Event reactives so only react on button press
+summary_tab_react<- eventReactive(input$Run_model, {summary_tab()})
+
+removal_plot_react<- eventReactive(input$Plot_removal,{removal_plot()})
 
 #render a table of parameter estimates
 output$parameter_table<-renderTable({
-req(input$Run_model)
-  isolate(summary_tab())
+	summary_tab_react()
 }, row.names=FALSE, width=300, caption="Parameter estimates", caption.placement = "top")
 
+
 output$removal_plot<-renderPlot({
-	isolate(removal_plot())
+	#isolate(removal_plot())
+	removal_plot_react()
 })
 
 output$detection_plot<-renderPlot({

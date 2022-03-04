@@ -5,7 +5,7 @@ require(shinycssloaders)
 require(shinyBS)
 require(waiter)
 require(sf)
-require(raster)
+#require(raster)
 require(terra)
 require(tidyverse)
 require(R.utils)
@@ -36,10 +36,10 @@ ui<-fluidPage(
 		 				 tipify(radioButtons(inputId="Model", label="Select model",
 		 				 						 choices=list("Nonspatial removals (single or multi-season)"="remGP",
 		 				 						 						 "Spatial removal data (single season)"="remMN",
-		 				 						 						 "Spatial removal data with auxilary detections (single season)"="remGRM"#,
-		 				 						 					#	 "remMNO"="remMNO", #hidden remMNO and occuMS for now
-		 				 						 					#	 "occuMS"="occuMS"
-		 				 						 ), selected="remMN"), "remGP-aspatial removal data<br>remMN-spatially referenced removal data<br>remGRM-spatially referenced removal data with auxilary detections")
+		 				 						 						 "Spatial removal data with auxilary detections (single season)"="remGRM",
+		 				 						 						 "Spatial removal data (multi-season)"="remMNO",
+		 				 						 						 "Spatial presence/absence data (multiseason)"="occuMS"
+		 				 						 ), selected="remGP"), "remGP-aspatial removal data<br>remMN-spatially referenced removal data<br>remGRM-spatially referenced removal data with auxilary detections")
 		 				 ),
 		 	#conditionally take input for parameter K, depending on model type.
 		 	conditionalPanel("input.Model!='remMN' && input.Model!='occuMS'",
@@ -89,8 +89,8 @@ ui<-fluidPage(
 		 			 			               If none selected an intercept-only model will be fitted"))
 
 		 	),
-		 	column(3, actionButton(inputId="Run_model", label="Fit model", class = "btn-success"),br(" "),
-		 				 actionButton(inputId="EstDens", "Estimate Density Surface"),br(" "),
+		 	column(3, actionButton(inputId="Run_model", label="Fit model", class = "btn-success"),br(),
+		 				 actionButton(inputId="EstDens", "Estimate Density Surface"),br(),
 		 				 downloadButton(inputId="downloadraster","Download Density Raster")) ,width=7, fluid=TRUE)),
 mainPanel(
 tabsetPanel(id="maintabs", type="tabs",

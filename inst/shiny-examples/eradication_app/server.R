@@ -16,14 +16,13 @@ server<-function(input, output, session){
 #upload rasters of habitat variables. default is San Nicolas
 	hab_raster<-reactive({
 		if(is.null(input$habitat_rasters))
-		{habras<-NULL } else
-		{
-			#habras<-stack(input$habitat_raster$datapath)
-			nrast<-nrow(input$habitat_rasters)
+		{habras<-NULL }
+		else
+		{ nrast<-nrow(input$habitat_rasters)
 			rasts<-list()
-			for(i in 1:nrast){rasts[[i]] <- raster(input$habitat_rasters[i, 'datapath'])
+			for(i in 1:nrast){rasts[[i]] <- terra::rast(input$habitat_rasters[i, 'datapath'])
 			names(rasts[[i]])<-gsub(".tif", "", input$habitat_rasters[i, 'name'])}
-			habras<-stack(rasts)
+			habras<- rast(rasts)
 		}
 		habras
 	})
@@ -84,9 +83,14 @@ observeEvent(input$EstDens, {
 	updateTabsetPanel(session, "maintabs",
 										selected = "panel1")
 })
-observe(if(input$Model!="remMN" & input$Model!="occuMS" ) {
-	updateNumericInput(session, "K", value=5*max(detections()) + 50) #sets default value for K on model select
+observe(if(input$Model %in% c("remGRM","remMNO")) {
+	updateNumericInput(session, "K", value=5*max(removals()) + 50) #sets default value for K on model select
 })
+
+observe(if(input$Model %in% c("remGP")) {
+	updateNumericInput(session, "K", value=5*max(cedata()$catch) + 50) #sets default value for K on model select
+})
+
 ###################################################################################################
 #reactive function for habitat value extraction from raster
 ###################################################################################################
@@ -94,8 +98,11 @@ habmean<-reactive({
 	rast<-hab_raster()
 	buff<-buff()
 	traps<-traps()
-	if(buff==0){habvals<-raster::extract(rast, traps, df=TRUE)} else
-	{habvals<-raster::extract(rast, traps, buffer=buff, fun=mean, df=TRUE)}
+	traps<- st_as_sf(traps, coords=c(1,2), crs=st_crs(site_bound()))
+	if(buff==0){habvals<-terra::extract(rast, traps)} else
+	{ traps<- st_buffer(traps, buff)
+		habvals<-terra::extract(rast, vect(traps), fun=mean, na.rm=TRUE)
+		}
 	habvals
 })
 
@@ -343,43 +350,9 @@ output$map<-renderLeaflet({
 	opacity<-habopacity()
 	transparency<-1-opacity
   traps<-traps()
-  if(!is.null(traps)){
-	traps<-st_as_sf(traps, coords = c(1, 2), crs=st_crs(bound))
-	traps_buff<-st_buffer(traps, dist=buff())
-  } else {traps<-NULL; traps_buff<-NULL}
-	habras<-hab_raster()
-	if(!is.null(habras)){
-	crs(habras)<-crs(bound) #assume same crs as region boundary
-	habrasproj<-projectRaster(habras, crs="+init=epsg:4326", method="bilinear")
-	nrast<-nlayers(habrasproj)} else {nrast<-0; habrasproj<-NULL} #how many habitat rasters in the stack?
-	palvec<-c("viridis", "magma", "plasma", "inferno")
-	m<-leaflet() %>%
-		addTiles(group="OSM") %>%
-		addProviderTiles("Esri.WorldTopoMap", group="ESRI Topo") %>%
-		addProviderTiles("Esri.WorldImagery", group="ESRI Satellite")
-	count =1
-	while(count<=nrast) {  #adding habitat rasters one at a time
-		m <- m %>% addRasterImage(habrasproj[[count]],
-															colors=colorNumeric(palvec[count], values(habrasproj[[count]]), na.color = "#00000000"),
-															opacity=transparency,
-															layerId = names(habrasproj)[count],
-															group=names(habrasproj)[count]) %>%
-			addLegend(values=values(habrasproj[[count]]) ,
-								pal = colorNumeric(palvec[count], values(habrasproj[[count]]), na.color = "#00000000"),
-								title=names(habrasproj)[count], bins=5,
-								group = names(habrasproj)[count], position="bottomleft")
-		count<-count+1
-	}
-	m <- m %>%	addPolygons(data=st_transform(bound, "+init=epsg:4326"), weight=2, fill=FALSE) %>%
-		addCircleMarkers(data=st_transform(traps, "+init=epsg:4326"), color="red", radius=1, group="traps") %>%
-		addPolygons(data=st_transform(traps_buff, "+init=epsg:4326"), color="red", weight=1, group="traps buffer") %>%
-		addScaleBar("bottomright", options=scaleBarOptions(imperial=FALSE, maxWidth = 200)) %>%
-
-		addLayersControl(baseGroups=c("OSM (default)", "ESRI Topo", "ESRI Satellite"),
-										 overlayGroups = c("traps", "traps buffer", names(habrasproj)),
-										 options=layersControlOptions(collapsed=FALSE)) %>%
-		hideGroup("traps buffer") %>%
-		hideGroup(names(habrasproj)[-1]) #keep the first raster displayed
+  buffer<- buff()
+  habras<-hab_raster()
+  m<- make_leaflet_map(bound, habras, traps, buffer, transparency)
 })
 
 #code to update map with raster predictions

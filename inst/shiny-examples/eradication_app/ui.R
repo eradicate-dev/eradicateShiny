@@ -104,9 +104,10 @@ tabsetPanel(id="maintabs", type="tabs",
 							 ),
 			#Fitted models tab
 			tabPanel(title="Fitted Model",        value="panel2",
-							    fluidRow( tableOutput(outputId="parameter_table") %>% withSpinner(type=4)),
+							    fluidRow( column(5, tableOutput(outputId="parameter_table") %>% withSpinner(type=4)),
+							    					column(6, plotOutput(outputId = "abund_plot", width="100%"))),
 							    fluidRow( tableOutput(outputId="abundance_table")),
-							    fluidRow( textOutput(outputId="AIC") ),
+							    fluidRow( textOutput(outputId="AIC") )
 							 ),
 			tabPanel(title="Help", value="panel3", includeMarkdown("progress_help.md")))
 		)

@@ -6,7 +6,7 @@ server<-function(input, output, session){
 #Boundary of study area, in a shapefile
 	site_bound<-reactive({
 		myshape<-input$boundary
-		get_shapefiles(myshape)
+		get_zipped_shapefiles(myshape)
 	})
 #upload rasters of habitat variables. default is San Nicolas
 	hab_raster<-reactive({
@@ -135,9 +135,9 @@ state_formula<-reactive({
 	form
 })
 
-#fit the selected model to the data.
-fit_mod<-reactive({
 
+fit_mod<-reactive({
+	#fit the selected model to the data.
  cedata <- cedata()
  traps<- traps()
  removals<- removals()
@@ -223,6 +223,20 @@ detection_plot<-reactive({
 					legend.position = "bottom")
 })
 
+abund_plot<- reactive({
+	modname<-ModToFit()
+	mod<-fit_mod()
+	out<- make_abund(mod, modname)
+	out %>% ggplot(aes(Session, N, group=1)) +
+		geom_line() +
+		geom_linerange(aes(ymin=lcl, ymax=ucl)) +
+		geom_point(color="red", size=2.5) +
+		labs(x ="Session", y="Abundance (N)") +
+		theme_bw() +
+		theme(axis.title.x = element_text(face="bold", size=15),
+					axis.title.y = element_text(face="bold", size=15),
+					axis.text = element_text(size=12))
+})
 #summary table of parameter estimates for selected model
 summary_tab<-reactive({
 	mod<- fit_mod()
@@ -326,6 +340,10 @@ output$AIC <-renderText({
 	isolate(AIC())
 })
 
+output$abund_plot<- renderPlot({
+	req(input$Run_model)
+	isolate(abund_plot())
+})
 #download the density raster
 output$downloadraster <- downloadHandler(
 	filename = "density_raster.tif",

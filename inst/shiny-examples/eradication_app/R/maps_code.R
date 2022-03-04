@@ -1,4 +1,36 @@
 
+# get_shapefiles<- function(myshape) {
+# 	dir<-dirname(myshape$datapath[1])
+# 	for (i in 1:nrow(myshape)) {
+# 		file.rename(myshape$datapath[i], paste0(dir,"/",myshape$name[i]))
+# 	}
+# 	getshp <- list.files(dir, pattern="*.shp", full.names=TRUE)
+# 	shp<- st_read(getshp, quiet=TRUE)
+# 	return(shp)
+# }
+
+ get_shapefiles<- function(myshape) {
+ 	dir<-dirname(myshape$datapath[1])
+ 	unzip(myshape$datapath, exdir = dir)
+ 	getshp <- list.files(dir, pattern="*.shp", full.names=TRUE)
+ 	shp<- st_read(getshp, quiet=TRUE)
+ 	return(shp)
+ }
+
+# #create a couple temp files
+# temp <- tempfile()
+# temp2 <- tempfile()
+# #download the zip folder from the internet save to 'temp'
+# download.file("https://www2.census.gov/geo/tiger/TIGER2017/COUNTY/tl_2017_us_county.zip",temp)
+# #unzip the contents in 'temp' and save unzipped content in 'temp2'
+# unzip(zipfile = temp, exdir = temp2)
+# #finds the filepath of the shapefile (.shp) file in the temp2 unzip folder
+# #the $ at the end of ".shp$" ensures you are not also finding files such as .shp.xml
+# your_SHP_file<-list.files(temp2, pattern = ".shp$",full.names=TRUE)
+#
+# #read the shapefile. Alternatively make an assignment, such as f<-sf::read_sf(your_SHP_file)
+# sf::read_sf(your_SHP_file)
+
 
 make_leaflet_map<- function(bound, habras=NULL, traps=NULL, buffer=0, transparency = 1){
 
@@ -40,9 +72,9 @@ make_leaflet_map<- function(bound, habras=NULL, traps=NULL, buffer=0, transparen
 								group = names(habrasproj)[count], position="bottomleft")
 		count<-count+1
 	}
-	m <- m %>%	addPolygons(data=st_transform(bound, "+init=epsg:4326"), weight=2, fill=FALSE) %>%
-		addCircleMarkers(data=st_transform(traps, "+init=epsg:4326"), color="red", radius=1, group="traps") %>%
-		addPolygons(data=st_transform(traps_buff, "+init=epsg:4326"), color="red", weight=1, group="traps buffer") %>%
+	m <- m %>%	addPolygons(data=st_transform(bound, 4326), weight=2, fill=FALSE) %>%
+		addCircleMarkers(data=st_transform(traps, 4326), color="red", radius=1, group="traps") %>%
+		addPolygons(data=st_transform(traps_buff, 4326), color="red", weight=1, group="traps buffer") %>%
 		addScaleBar("bottomright", options=scaleBarOptions(imperial=FALSE, maxWidth = 200)) %>%
 		addLayersControl(baseGroups=c("OSM (default)", "ESRI Topo", "ESRI Satellite"),
 										 overlayGroups = c("traps", "traps buffer", names(habrasproj)),

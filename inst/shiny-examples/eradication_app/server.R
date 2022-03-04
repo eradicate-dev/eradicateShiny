@@ -6,12 +6,7 @@ server<-function(input, output, session){
 #Boundary of study area, in a shapefile
 	site_bound<-reactive({
 		myshape<-input$boundary
-		dir<-dirname(myshape[1,4])
-		for (i in 1:nrow(myshape)) {
-			file.rename(myshape[i,4], paste0(dir,"/",myshape[i,1]))
-		}
-		getshp <- list.files(dir, pattern="*.shp", full.names=TRUE)
-		st_read(getshp, quiet=TRUE)
+		get_shapefiles(myshape)
 	})
 #upload rasters of habitat variables. default is San Nicolas
 	hab_raster<-reactive({

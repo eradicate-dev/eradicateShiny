@@ -53,8 +53,8 @@ ui<-fluidPage(
 		 									 fileInput(inputId="cedata", label="Catch and Effort data (.csv)", accept=c("text/csv", ".csv"))),
 		 	#hide spatial input tools if using an aspatial model
 		 	conditionalPanel("input.Model!='remGP'",
-		 fileInput(inputId="boundary", label="Region boundary (.shp)",
-		 					multiple=TRUE,  accept=c('.shp','.dbf','.sbn','.sbx','.shx','.prj')),
+		 fileInput(inputId="boundary", label="Region boundary zipfile (.zip)",
+		 					multiple=TRUE,  accept=c('.zip')),
 		 tipify(fileInput(inputId="habitat_rasters", label="Habitat raster (.tif)",
 		 								 multiple=TRUE, accept=c(".tif")),
 		 			 "Raster files (.tif) of habitat covariates in the same projection as the boundary.
@@ -64,7 +64,7 @@ ui<-fluidPage(
 		 conditionalPanel("input.Model=='remGRM'",
 		 								 fileInput(inputId="detections", label="Detection histories (.csv)", accept=c("text/csv", ".csv")))), #end conditional block
 		 fluidRow(
-		 	column(4,
+		 	column(3,
 		 conditionalPanel("input.Model=='remMNO' | input.Model=='occuMS'",
 		 numericInput("nights", "Nights per primary session", min=0, max=NA, value=10, step=1))))
 		 ),

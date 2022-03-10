@@ -42,8 +42,8 @@ detections<-reactive({
 })
 
 #how many nights per primary session?
-nights<-reactive({
-	input$nights
+pperiods<-reactive({
+	input$pperiods
 })
 #habitat radius user input
 buff<-reactive({
@@ -90,9 +90,9 @@ observe(if(input$Model %in% c("remGP")) {
 #reactive function for habitat value extraction from raster
 ###################################################################################################
 habmean<-reactive({
-	rast<-hab_raster()
-	buff<-buff()
-	traps<-traps()
+	rast<- hab_raster()
+	buff<- buff()
+	traps<- traps()
 	traps<- st_as_sf(traps, coords=c(1,2), crs=st_crs(site_bound()))
 	if(buff==0){habvals<-terra::extract(rast, traps)} else
 	{ traps<- st_buffer(traps, buff)
@@ -132,7 +132,7 @@ state_formula<-reactive({
 	if(length(modelvars)==0) {form="1"} else
 	{form=paste0(modelvars, collapse="+") }
 	form<-paste0("~",form)
-	form
+	as.formula(form)
 })
 
 
@@ -143,11 +143,11 @@ fit_mod<-reactive({
  removals<- removals()
  detections<- detections()
  modname<- ModToFit()
- nights<- nights()
+ pperiods<- pperiods()
  K<- K()
 
        #extract habitat variables only for spatial models, not otherwise
-if(modname!="remGP") {site.data<-habmean()}
+if(modname!="remGP") {site.data<- habmean()}
 if(modname== "remGP") {if("session" %in% colnames(cedata))
 														emf<- eFrameGP(cedata$catch, cedata$effort, session=cedata$session)
 												 else
@@ -161,18 +161,20 @@ if(modname== "remGRM"  ) {emf<- eFrameGRM(y=removals,     #removal data
 																					ym=detections,  #these are secondary monitoring detection data
 																					numPrimary=1,
 																					siteCovs = site.data)
-		                     model<- remGRM(lamformula=as.formula(state_formula()),
+		                     model<- remGRM(lamformula=state_formula(),
 		                     							 phiformula=~1,
 		                     							 detformula=~1,
 		                     							 mdetformula=~1,
 		                     							 data=emf,
 		                     							 K=K)} else
-if(modname== "remMNO" )  {emf=eFrameMNO()#specify details of data structure TBD
+if(modname== "remMNO" )  {emf=eFrameMNO(y=removals, numPrimary=pperiods, siteCovs = site.data)
 	                        model=remMNO(lamformula=state_formula(), gamformula=~1,
-	                        						 omformula=~1, detformula = ~1, data=emf, K=K)} else
-if(modname=="occuMS")   {emf=eframeMS() #specify details of data structure TBD
-                         model=occuMS(psiformula = state_formula, gamformula = ~1,
-                         						 epsformulat=~1,detformula=~1, data=emf)}
+	                        						 omformula=~1, detformula = ~1, dynamics="trend",
+
+	                        						 data=emf, K=K)} else
+if(modname=="occMS")   {emf=eFrameMS(y=removals, numPrimary=pperiods, siteCovs=site.data)
+                         model=occMS(lamformula = state_formula(), gamformula = ~1,
+                         						 epsformula= ~1,detformula= ~1, data=emf)}
 model
 })
 
@@ -185,6 +187,11 @@ removal_plot<-reactive({
 			plot_data$session<- 1
 	} else if(mod_type %in% c("remMN","remGRM")) {
 		removals<-removals()
+		catch<- apply(removals,2,sum,na.rm=TRUE)
+		effort<- rep(nrow(removals), length(catch))
+		plot_data<- tibble(catch=catch, effort=effort, session=1)
+	} else if(mod_type %in% "remMNO"){
+		removals<- removals()
 		catch<- apply(removals,2,sum,na.rm=TRUE)
 		effort<- rep(nrow(removals), length(catch))
 		plot_data<- tibble(catch=catch, effort=effort, session=1)

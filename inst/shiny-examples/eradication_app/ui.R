@@ -38,11 +38,11 @@ ui<-fluidPage(
 		 				 						 						 "Spatial removal data (single season)"="remMN",
 		 				 						 						 "Spatial removal data with auxilary detections (single season)"="remGRM",
 		 				 						 						 "Spatial removal data (multi-season)"="remMNO",
-		 				 						 						 "Spatial presence/absence data (multiseason)"="occuMS"
+		 				 						 						 "Spatial presence/absence data (multiseason)"="occMS"
 		 				 						 ), selected="remGP"), "remGP-aspatial removal data<br>remMN-spatially referenced removal data<br>remGRM-spatially referenced removal data with auxilary detections")
 		 				 ),
 		 	#conditionally take input for parameter K, depending on model type.
-		 	conditionalPanel("input.Model!='remMN' && input.Model!='occuMS'",
+		 	conditionalPanel("input.Model!='remMN' && input.Model!='occMS'",
 		 									 column(3,
 		 									 			 tipify(
 		 									 			 numericInput(inputId="K", label="K", min=1, max=NA, value=50, step=1), "upper bound for integration of abundance")
@@ -62,11 +62,11 @@ ui<-fluidPage(
 		 fileInput(inputId="traps", label="Trap locations (.csv)", accept=c("text/csv", ".csv")),
 		 fileInput(inputId="removals", label="Removal histories(.csv)", accept=c("text/csv", ".csv")),
 		 conditionalPanel("input.Model=='remGRM'",
-		 								 fileInput(inputId="detections", label="Detection histories (.csv)", accept=c("text/csv", ".csv")))), #end conditional block
+		 								 fileInput(inputId="detections", label="Detection histories (.csv)", accept=c("text/csv", ".csv")))),br(), #end conditional block
 		 fluidRow(
 		 	column(3,
-		 conditionalPanel("input.Model=='remMNO' | input.Model=='occuMS'",
-		 numericInput("nights", "Nights per primary session", min=0, max=NA, value=10, step=1))))
+		 conditionalPanel("input.Model=='remMNO' | input.Model=='occMS'",
+		 numericInput(inputId="pperiods", "Sessions", min=0, max=NA, value=1, step=1))))
 		 ),
 		 hr(),
 		 fluidRow(

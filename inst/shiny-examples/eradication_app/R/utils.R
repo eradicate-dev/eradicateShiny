@@ -27,6 +27,17 @@ make_summary<- function(mod, mod_type){
 		state<- sum_model(mod_summ, 1)
 		detect<- sum_model(mod_summ, 2)
 		out<- rbind(state, detect)
+	} else if(mod_type %in% "remMNO"){
+		state<- sum_model(mod_summ, 1)
+		growth<- sum_model(mod_summ, 2)
+		detect<- sum_model(mod_summ, 3)
+		out<- rbind(state,growth,detect)
+	} else if(mod_type %in% "occMS") {
+		state<- sum_model(mod_summ, 1)
+		growth<- sum_model(mod_summ, 2)
+		surv<- sum_model(mod_summ, 3)
+		detect<- sum_model(mod_summ, 4)
+		out<- rbind(state,growth,surv,detect)
 	}
 	out
 }
@@ -61,6 +72,22 @@ make_abund<- function(mod, mod_type){
 			total<- data.frame(Parameter = "Total", Nhat$Nhat)
 			resid<- data.frame(Parameter = "Residual", Nhat$Nresid)
 			out<- rbind(total, resid)
+			row.names(out)<- NULL
+		} else if(mod_type %in% "remMNO") {
+			Nhat<- calcN(mod)
+			tmp<- Nhat$Nseason
+			seas<- tmp[['.season']]
+			tmp[['.season']]<- NULL
+			total<- data.frame(Parameter = "Total", Session=seas, tmp)
+			resid<- data.frame(Parameter = "Residual", Session=max(seas)+1, Nhat$Nresid)
+			out<- rbind(total, resid)
+			row.names(out)<- NULL
+		} else if(mod_type %in% "occMS") {
+			Nhat<- calcN(mod)
+			tmp<- Nhat$Nhat
+			seas<- tmp[['.season']]
+			tmp[['.season']]<- NULL
+			out<- data.frame(Parameter = "Occupancy", Session=seas, tmp)
 			row.names(out)<- NULL
 		}
 	out

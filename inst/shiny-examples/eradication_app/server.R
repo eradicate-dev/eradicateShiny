@@ -234,6 +234,7 @@ abund_plot<- reactive({
 	modname<-ModToFit()
 	mod<-fit_mod()
 	out<- make_abund(mod, modname)
+	out<- out %>% mutate(Session=factor(Session))
 	out %>% ggplot(aes(Session, N, group=1)) +
 		geom_line() +
 		geom_linerange(aes(ymin=lcl, ymax=ucl)) +
@@ -272,42 +273,16 @@ abund_tab<-reactive({
 })
 
 DensRast<-reactive({
-	modname<-ModToFit()
-	mod<-fit_mod()
-	buff<-buff()  #buffer zone radius
-	rast<-hab_raster()
-	bound<-site_bound()
+	modname<- ModToFit()
+	mod<- fit_mod()
+	buff<- buff()  #buffer zone radius
+	rast<- hab_raster()
+	bound<- site_bound()
 	#get the names of the coefficients that are actually in the model:
-	form<-state_formula()
-	form_names<-gsub("~", "", form)
-	form_names<-strsplit(form_names, "\\+")
-	#
-	coeffs<-mod$estimates$state$estimates
-	varnames<-names(rast)
+	form<- state_formula()
 
-	#if intercept only, don't bother with focal raster calculations
-	print("estimating density surface")
-	if(form== "~1"){preds.lin<-coeffs[1]} else {
-		#calculate focal rasters, but only for required coefficients
-		rast_incl<-which(varnames %in% names(coeffs))
-		rast_use<-rast[[rast_incl]]
-		filt<-focalWeight(x=rast_use, d=buff, type='circle')
-		rastfocal<-list()
-		for(i in seq_along(names(rast_use))){
-			#make a focal layer for each raster in the stack
-			rastfocal[[i]]<-focal(rast_use[[i]], w=filt,fun=mean, na.rm=TRUE, pad=TRUE)
-		} #end focal loop
-		rastfocal<-stack(rastfocal)
-		vals<-getValues(rastfocal)
-		vals<-cbind(1, vals) #add an intercept
-		preds.lin<-vals %*% coeffs
-	}
-	#back transform from link scale.
-	if(modname=="Occ"){preds<-plogis(preds.lin)} else
-	{preds<-exp(preds.lin)}
-	predras<-raster(rast)
-	predras[]<-preds
-	predras<-mask(predras, bound)
+	predras<- make_dens_surface(rast, mod, modname, form, buff)
+	predras<- terra::mask(predras, vect(bound))
 	predras
 })
 
@@ -352,11 +327,13 @@ output$abund_plot<- renderPlot({
 	isolate(abund_plot())
 })
 #download the density raster
-output$downloadraster <- downloadHandler(
-	filename = "density_raster.tif",
+output$download <- downloadHandler(
+	filename = function() {
+		return('density_raster.tif')
+	},
 	content = function(file) {
-		writeRaster(DensRast(), filename=filename, format="GTiff", overwrite=TRUE)
-	}, contentType = "image/tif"
+		terra::writeRaster(DensRast(), filename=file, overwrite=TRUE)
+	}
 )
 
 #Render a map of the input data
@@ -383,17 +360,23 @@ observeEvent(input$EstDens, {
 	req(input$Run_model)
 	bound<-site_bound()
 	modname<-ModToFit()
-	if(modname=="Occ"){leglab<-"Pr(Occ) for pest"} else {leglab<-"Pest density"}
+	if(modname %in% "occMS"){leglab<-"Pr(Occ) for pest"} else {leglab<-"Pest density"}
 	DensRast <- DensRast()
 	opacity<-habopacity()
 	transparency<-1-opacity
-	crs(DensRast)<-crs(bound)
-	DensRastProj<-projectRaster(DensRast, crs="+init=epsg:4326", method="bilinear")
+	crs(DensRast)<- st_crs(bound)$wkt
+	DensRastProj<- terra::project(DensRast, "epsg:4326", method="bilinear")
 	#need to reimport habitat raster
 	habras<-hab_raster()
-	crs(habras)<-crs(bound) #assume same crs as region boundary
-	habrasproj<-projectRaster(habras, crs="+init=epsg:4326", method="bilinear")
-	pal <- colorNumeric("Reds", values(DensRastProj), na.color = "transparent")
+	crs(habras)<- st_crs(bound)$wkt #assume same crs as region boundary
+	habrasproj<- terra::project(habras, "epsg:4326", method="bilinear")
+	DensRastProj<- raster::raster(DensRastProj)
+	habrasproj<- raster::raster(habrasproj)
+	vrange<- range(values(DensRastProj),na.rm=TRUE)
+	fuzz<- diff(vrange) * 0.01  # add small value so that min and max values appear in plot
+	vrange[1]<- vrange[1] - fuzz
+	vrange[2]<- vrange[2] + fuzz
+	pal <- colorNumeric("Reds", vrange, na.color = "transparent")
 	leafletProxy("map") %>%
 		clearGroup("density raster") %>%
 		removeControl("denslegend") %>%

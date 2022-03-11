@@ -68,3 +68,33 @@ make_leaflet_map<- function(bound, habras=NULL, traps=NULL, buffer=0, transparen
 		hideGroup(names(habrasproj)[-1]) #keep the first raster displayed
 	return(m)
 }
+
+#-------
+make_dens_surface<- function(rr, mod, modname, form, buff) {
+	coeffs<- coef(mod, type="state")
+	varnames<- names(rr)
+	#if intercept only, don't bother with focal raster calculations
+	print("estimating density surface")
+	if(form== "~1"){preds.lin<-coeffs[1]} else {
+	#calculate focal rasters, but only for required coefficients
+	rast_incl<-which(varnames %in% names(coeffs))
+	rast_use<-rr[[rast_incl]]
+	fwin<- terra::focalMat(rast_use, buff, type="circle")
+	fwin[fwin>0]<- 1
+	rastfocal<-list()
+	for(i in seq_along(names(rast_use))){
+	#make a focal layer for each raster in the stack
+	rastfocal[[i]]<- terra::focal(rast_use[[i]], w=fwin, fun=mean, na.rm=TRUE, pad=TRUE)
+	} #end focal loop
+	rastfocal<- rast(rastfocal)
+	vals<- as.matrix(rastfocal)
+	vals<-cbind(1, vals) #add an intercept
+	preds.lin<-vals %*% coeffs
+	}
+	#back transform from link scale.
+	if(modname %in% "occMS"){preds<-plogis(preds.lin)} else
+	{preds<-exp(preds.lin)}
+	predras<- rast(rr)
+	predras[]<-preds
+	predras
+}

@@ -69,8 +69,8 @@ make_abund<- function(mod, mod_type){
 	} else
 		if(mod_type %in% c("remMN","remGRM")) {
 			Nhat<- calcN(mod)
-			total<- data.frame(Parameter = "Total", Nhat$Nhat)
-			resid<- data.frame(Parameter = "Residual", Nhat$Nresid)
+			total<- data.frame(Parameter = "Total", Session=1, Nhat$Nhat)
+			resid<- data.frame(Parameter = "Residual", Session=2, Nhat$Nresid)
 			out<- rbind(total, resid)
 			row.names(out)<- NULL
 		} else if(mod_type %in% "remMNO") {

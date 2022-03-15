@@ -190,7 +190,7 @@ removal_plot<-reactive({
 		catch<- apply(removals,2,sum,na.rm=TRUE)
 		effort<- rep(nrow(removals), length(catch))
 		plot_data<- tibble(catch=catch, effort=effort, session=1)
-	} else if(mod_type %in% "remMNO"){
+	} else if(mod_type %in% c("remMNO","occMS")){
 		removals<- removals()
 		catch<- apply(removals,2,sum,na.rm=TRUE)
 		effort<- rep(nrow(removals), length(catch))

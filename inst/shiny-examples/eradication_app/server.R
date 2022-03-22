@@ -8,7 +8,7 @@ server<-function(input, output, session){
 		myshape<-input$boundary
 		get_zipped_shapefiles(myshape)
 	})
-#upload rasters of habitat variables. default is San Nicolas
+#upload rasters of habitat variables.
 	hab_raster<-reactive({
 		if(is.null(input$habitat_rasters))
 		{habras<-NULL }
@@ -41,7 +41,7 @@ detections<-reactive({
 	load_file(input$detections$name, input$detections$datapath)
 })
 
-#how many nights per primary session?
+#how many primary sessions?
 pperiods<-reactive({
 	input$pperiods
 })
@@ -84,6 +84,13 @@ observe(if(input$Model %in% c("remGRM","remMNO")) {
 
 observe(if(input$Model %in% c("remGP")) {
 	updateNumericInput(session, "K", value=5*max(cedata()$catch) + 50) #sets default value for K on model select
+})
+
+observe(if(input$Model %in% c("occMS","remMNO")) {
+	if(!is.null(removals()$session))
+		updateNumericInput(session, "pperiods", value=unstack.data(removals())$T) #update primary periods
+	else
+		updateNumericInput(session, "pperiods", value=1)
 })
 
 ###################################################################################################
@@ -167,12 +174,11 @@ if(modname== "remGRM"  ) {emf<- eFrameGRM(y=removals,     #removal data
 		                     							 mdetformula=~1,
 		                     							 data=emf,
 		                     							 K=K)} else
-if(modname== "remMNO" )  {emf=eFrameMNO(y=removals, numPrimary=pperiods, siteCovs = site.data)
+if(modname== "remMNO" )  {emf=eFrameMNO(df=removals, siteCovs = site.data)
 	                        model=remMNO(lamformula=state_formula(), gamformula=~1,
 	                        						 omformula=~1, detformula = ~1, dynamics="trend",
-
 	                        						 data=emf, K=K)} else
-if(modname=="occMS")   {emf=eFrameMS(y=removals, numPrimary=pperiods, siteCovs=site.data)
+if(modname=="occMS")   {emf=eFrameMS(df=removals, siteCovs=site.data)
                          model=occMS(lamformula = state_formula(), gamformula = ~1,
                          						 epsformula= ~1,detformula= ~1, data=emf)}
 model
@@ -183,20 +189,26 @@ removal_plot<-reactive({
 	mod_type<- ModToFit()
 	if(mod_type == "remGP"){
 		plot_data<- cedata()
-		if(!("session" %in% colnames(plot_data)))
+		if(!("session" %in% colnames(plot_data))) {
 			plot_data$session<- 1
+			plot_data<- plot_data %>% mutate(cpue = catch/effort, ccatch = cumsum(catch))
+		}
+		else {
+			plot_data<- plot_data %>% group_by(session) %>% mutate(cpue = catch/effort, ccatch = cumsum(catch))
+		}
 	} else if(mod_type %in% c("remMN","remGRM")) {
 		removals<-removals()
 		catch<- apply(removals,2,sum,na.rm=TRUE)
 		effort<- rep(nrow(removals), length(catch))
 		plot_data<- tibble(catch=catch, effort=effort, session=1)
+		plot_data<- plot_data %>% mutate(cpue = catch/effort, ccatch = cumsum(catch))
 	} else if(mod_type %in% c("remMNO","occMS")){
 		removals<- removals()
-		catch<- apply(removals,2,sum,na.rm=TRUE)
-		effort<- rep(nrow(removals), length(catch))
-		plot_data<- tibble(catch=catch, effort=effort, session=1)
+		tmp<- removals %>% pivot_longer(!session, names_to="period", values_to="catch")
+		plot_data<- tmp %>% group_by(session,period) %>% summarise(catch=sum(catch), .groups="keep")
+		plot_data<- plot_data %>% group_by(session) %>% mutate(cpue = catch, ccatch=cumsum(catch))
 	}
-	plot_data %>% mutate(cpue = catch/effort, ccatch = cumsum(catch)) %>%
+	plot_data %>%
 		ggplot(aes(ccatch, cpue)) +
 		geom_point() +
 		geom_smooth(method="lm") +

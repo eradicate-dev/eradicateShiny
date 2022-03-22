@@ -65,6 +65,7 @@ make_abund<- function(mod, mod_type){
 			total<- sum_abund(Nhat, 1)
 			resid<- sum_abund(Nhat, 2)
 			out<- rbind(total, resid)
+			out$Session <- c(1,2)
 		}
 	} else
 		if(mod_type %in% c("remMN","remGRM")) {
@@ -101,4 +102,16 @@ sum_abund<- function(x, id) {
 	tab
 }
 
+
+unstack.data<- function(df) {
+	# helper function to take multi-session df and produce one
+	# wide matrix with dimensions M x JT
+	# df must have a column 'session' with at least 2 unique values
+	y<- split(df, ~factor(session))
+	y<- lapply(y, function(x) x[setdiff(names(x),"session")])
+	T<- length(y)
+	M<- max(sapply(y, nrow))
+	J<- max(sapply(y, ncol))
+	list(y=y,M=M,J=J,T=T)
+}
 

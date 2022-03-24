@@ -1,5 +1,4 @@
-Eradication progress app user guide
------------------------------------
+## Eradication progress app user guide
 
 This shiny app is primarily to be used for assessing progress towards
 eradication of a pest population. As an eradication program progresses,
@@ -128,8 +127,7 @@ All models in the progress app require inputs in particular formats
         monitoring device should have an `NA` inserted in the
         appropriate row in `detection histories`.
 
-Analysis
---------
+## Analysis
 
 Once the data for a particular model has been uploaded, pressing the
 `fit model` button will run the selected model and print the output in

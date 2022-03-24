@@ -58,10 +58,8 @@ ui<-fluidPage(
 								 conditionalPanel(condition = "input.Model == 'REST'",
 								 tipify(fileInput(inputId="countREST", label="Detection histories or counts (.csv)", accept=c("text/csv", ".csv")),
 								        "csv file containing repeated counts at each detector device"),
-								 tipify(fileInput(inputId="stayREST", label="Stay (.csv)", accept=c("text/csv", ".csv")),
-								        "csv containing staying times for REST model"),
-								 tipify(fileInput(inputId="censREST", label="Censored (.csv)", accept=c("text/csv", ".csv")),
-								       "csv containing censoring status for observations (REST model)"),
+								 tipify(fileInput(inputId="stayREST", label="Staying and Censoring times (.csv)", accept=c("text/csv", ".csv")),
+								        "csv containing staying and censoring times for REST model"),
 								 fluidRow(
 								 	column(3,
 								 				 tipify(numericInput(inputId="activeREST", label="Active hours", value=24, min=0, max=24),
@@ -84,7 +82,7 @@ ui<-fluidPage(
 								 hr(),
 								 #CONTROL TO FIT MODEL ------------------------------------------------------------------------------
 								 fluidRow(
-								 column(6,
+								 column(4,
 								 			 tipify(checkboxGroupInput(inputId="state_formula", label="habitat covariates",
 								 			 									 choices=NULL,
 								 			 									 selected=NULL
@@ -92,6 +90,13 @@ ui<-fluidPage(
 								 			 			               If none selected an intercept-only model will be fitted")
 
 								 			 ),
+								 column(3,
+								 			 tipify(checkboxGroupInput(inputId="state_factors", label="habitat factor",
+								 			 													choices=NULL,
+								 			 													selected=NULL
+								 			 ),"Select if habitat variables is a discrete factor variable")
+
+								 ),
 								 column(3, actionButton(inputId="Run_model", label="Fit model"),
 								 			     actionButton(inputId="EstDens", "Estimate Density Surface"),
 								 			     downloadButton(inputId="downloadraster","Download Density Raster")) ,width=7, fluid=TRUE)

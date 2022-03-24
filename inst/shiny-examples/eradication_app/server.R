@@ -6,54 +6,44 @@ server<-function(input, output, session){
 #Boundary of study area, in a shapefile
 	site_bound<-reactive({
 		myshape<-input$boundary
-		dir<-dirname(myshape[1,4])
-		for ( i in 1:nrow(myshape)) {
-			file.rename(myshape[i,4], paste0(dir,"/",myshape[i,1]))
-		}
-		getshp <- list.files(dir, pattern="*.shp", full.names=TRUE)
-		st_read(getshp, quiet=TRUE)
+		get_zipped_shapefiles(myshape)
 	})
-#upload rasters of habitat variables. default is San Nicolas
+#upload rasters of habitat variables.
 	hab_raster<-reactive({
 		if(is.null(input$habitat_rasters))
-		{habras<-NULL } else
-		{
-			#habras<-stack(input$habitat_raster$datapath)
-			nrast<-nrow(input$habitat_rasters)
+		{habras<-NULL }
+		else
+		{ nrast<-nrow(input$habitat_rasters)
 			rasts<-list()
-			for(i in 1:nrast){rasts[[i]] <- raster(input$habitat_rasters[i, 'datapath'])
+			for(i in 1:nrast){rasts[[i]] <- terra::rast(input$habitat_rasters[i, 'datapath'])
 			names(rasts[[i]])<-gsub(".tif", "", input$habitat_rasters[i, 'name'])}
-			habras<-stack(rasts)
+			habras<- rast(rasts)
 		}
 		habras
 	})
+#csv of non-spatial catch effort data
+cedata<- reactive({
+	load_file(input$cedata$name, input$cedata$datapath)
+	})
+
 #csv of trap locations.
 traps<-reactive({
-		if(is.null(input$traps))
-			{traps<-NULL} else
-			{traps<-read_csv(input$traps$datapath) }
-		traps
+	load_file(input$traps$name, input$traps$datapath)
 	})
 
 #removals
 removals<-reactive({
-		if(is.null(input$removals))
-		{removals<-eradicate::san_nic_rem$rem} else
-		{removals<-read_csv(input$removals$datapath) }
-		removals
+	load_file(input$removals$name, input$removals$datapath)
 	})
 
 #passive detections
 detections<-reactive({
-	if(is.null(input$detections))
-	{detections<-eradicate::san_nic_rem$ym} else
-	{detections<-read_csv(input$detections$datapath) }
-	detections
+	load_file(input$detections$name, input$detections$datapath)
 })
 
-#how many nights per primary session?
-nights<-reactive({
-	input$nights
+#how many primary sessions?
+pperiods<-reactive({
+	input$pperiods
 })
 #habitat radius user input
 buff<-reactive({
@@ -88,18 +78,33 @@ observeEvent(input$EstDens, {
 	updateTabsetPanel(session, "maintabs",
 										selected = "panel1")
 })
-observe(if(input$Model!="remMN" & input$Model!="occuMS" ) {
-	updateNumericInput(session, "K", value=5*max(detections()) + 50) #sets default value for K on model select
+observe(if(input$Model %in% c("remGRM","remMNO")) {
+	updateNumericInput(session, "K", value=5*max(removals()) + 50) #sets default value for K on model select
 })
+
+observe(if(input$Model %in% c("remGP")) {
+	updateNumericInput(session, "K", value=5*max(cedata()$catch) + 50) #sets default value for K on model select
+})
+
+observe(if(input$Model %in% c("occMS","remMNO")) {
+	if(!is.null(removals()$session))
+		updateNumericInput(session, "pperiods", value=unstack.data(removals())$T) #update primary periods
+	else
+		updateNumericInput(session, "pperiods", value=1)
+})
+
 ###################################################################################################
 #reactive function for habitat value extraction from raster
 ###################################################################################################
 habmean<-reactive({
-	rast<-hab_raster()
-	buff<-buff()
-	traps<-traps()
-	if(buff==0){habvals<-raster::extract(rast, traps, df=TRUE)} else
-	{habvals<-raster::extract(rast, traps, buffer=buff, fun=mean, df=TRUE)}
+	rast<- hab_raster()
+	buff<- buff()
+	traps<- traps()
+	traps<- st_as_sf(traps, coords=c(1,2), crs=st_crs(site_bound()))
+	if(buff==0){habvals<-terra::extract(rast, traps)} else
+	{ traps<- st_buffer(traps, buff)
+		habvals<-terra::extract(rast, vect(traps), fun=mean, na.rm=TRUE)
+		}
 	habvals
 })
 
@@ -125,113 +130,138 @@ K<-reactive({
 	input$K
 })
 
-EstDens<-reactive({input$EstDens})
+EstDens<-reactive({
+	input$EstDens
+	})
 
 state_formula<-reactive({
 	modelvars<-input$state_formula
 	if(length(modelvars)==0) {form="1"} else
 	{form=paste0(modelvars, collapse="+") }
 	form<-paste0("~",form)
-	form
+	as.formula(form)
 })
 
-#fit the selected model to the data.
+
 fit_mod<-reactive({
-       traps<- traps()
-       removals<-removals()
-       detections<-detections()
-       nights<-nights()
-       modname<-ModToFit()
-       K<-K()
+	#fit the selected model to the data.
+ cedata <- cedata()
+ traps<- traps()
+ removals<- removals()
+ detections<- detections()
+ modname<- ModToFit()
+ pperiods<- pperiods()
+ K<- K()
+
        #extract habitat variables only for spatial models, not otherwise
-       if(modname!="remCE" & modname!="remGP") {site.data<-habmean()}
-if(modname== "remCE")    {catch<- apply(removals,2,sum)
-                          effort<- colSums(!is.na(removals)) #number of non NA removal results at each time
-	                        model<-remCE(catch, effort, nboot=50)}  else
-if(modname== "remGP")    {catch<- apply(removals,2,sum)
-	                        effort<- rep(nrow(removals), length(catch))
-	                       # extra monitoring/effort data
-	                       index<- apply(detections,2,sum)
-	                       ieffort<- rep(nrow(detections), length(index))
-	                       emf<- eFrameGP(catch, effort, index, ieffort)
-	                       model<- remGP(emf) } else
-if(modname== "remGR")    {emf<- eFrameGR(y=removals,
-																				 numPrimary=1,
-																				 siteCovs = site.data)
-		                     model<- remGR(lamformula=as.formula(state_formula()), #weird requirement to make the formula string a formula!
-		                     							phiformula = ~1,
-		                     							detformula = ~1,
-		                     							data=emf,
-		                     							K=K)
-		                     } else
+if(modname!="remGP") {site.data<- habmean()}
+if(modname== "remGP") {if("session" %in% colnames(cedata))
+														emf<- eFrameGP(cedata$catch, cedata$effort, session=cedata$session)
+												 else
+												 		emf<- eFrameGP(cedata$catch, cedata$effort)
+	                       model<- remGP(emf)
+	                       } else
+if(modname== "remMN" )   {emf<-eFrameR(y=removals, siteCovs=site.data, obsCovs=NULL) #specify details
+	                       	model<-remMN(lamformula=state_formula(), detformula = ~1, data=emf)
+	                       } else
 if(modname== "remGRM"  ) {emf<- eFrameGRM(y=removals,     #removal data
 																					ym=detections,  #these are secondary monitoring detection data
 																					numPrimary=1,
 																					siteCovs = site.data)
-		                     model<- remGRM(lamformula=as.formula(state_formula()),
+		                     model<- remGRM(lamformula=state_formula(),
 		                     							 phiformula=~1,
 		                     							 detformula=~1,
 		                     							 mdetformula=~1,
 		                     							 data=emf,
 		                     							 K=K)} else
-if(modname== "remMN" )   {emf<-eFrameR(y=removals, siteCovs=site.data, obsCovs=NULL) #specify details
-	                        model<-remMN(lamformula=state_formula(), detformula = ~1, data=emf)} else
-if(modname== "remMNO" )  {emf=eFrameMNO()#specify details of data structure TBD
-	                        model=remMN(lamformula=state_formula(), gamformula=~1,
-	                        						 omformula=~1, detformula = ~1, data=emf, K=K)} else
-if(modname=="occuMS")   {emf=eframeMS() #specify details of data structure TBD
-                         model=occuMS(psiformula = state_formula, gamformula = ~1,
-                         						 epsformulat=~1,detformula=~1, data=emf)}
+if(modname== "remMNO" )  {emf=eFrameMNO(df=removals, siteCovs = site.data)
+	                        model=remMNO(lamformula=state_formula(), gamformula=~1,
+	                        						 omformula=~1, detformula = ~1, dynamics="trend",
+	                        						 data=emf, K=K)} else
+if(modname=="occMS")   {emf=eFrameMS(df=removals, siteCovs=site.data)
+                         model=occMS(lamformula = state_formula(), gamformula = ~1,
+                         						 epsformula= ~1,detformula= ~1, data=emf)}
 model
 })
 
 #removal plot
 removal_plot<-reactive({
-	removals<-removals()
-	catch<- apply(removals,2,sum,na.rm=TRUE)
-	effort<- rep(nrow(removals), length(catch))
-	cpue<- catch/effort
-	ccatch<- cumsum(catch)
-	m<- coef(lm(cpue ~ ccatch))
-	plot(x=ccatch, y=cpue, type="p", col="red", las=1, pch=16,
-			 xlab="CPUE", ylab="Cumulative removals", main="Cumulative catch vs CPUE")
-	abline(a=m[1],b=m[2])
+	mod_type<- ModToFit()
+	if(mod_type == "remGP"){
+		plot_data<- cedata()
+		if(!("session" %in% colnames(plot_data))) {
+			plot_data$session<- 1
+			plot_data<- plot_data %>% mutate(cpue = catch/effort, ccatch = cumsum(catch))
+		}
+		else {
+			plot_data<- plot_data %>% group_by(session) %>% mutate(cpue = catch/effort, ccatch = cumsum(catch))
+		}
+	} else if(mod_type %in% c("remMN","remGRM")) {
+		removals<-removals()
+		catch<- apply(removals,2,sum,na.rm=TRUE)
+		effort<- rep(nrow(removals), length(catch))
+		plot_data<- tibble(catch=catch, effort=effort, session=1)
+		plot_data<- plot_data %>% mutate(cpue = catch/effort, ccatch = cumsum(catch))
+	} else if(mod_type %in% c("remMNO","occMS")){
+		removals<- removals()
+		tmp<- removals %>% pivot_longer(!session, names_to="period", values_to="catch")
+		plot_data<- tmp %>% group_by(session,period) %>% summarise(catch=sum(catch), .groups="keep")
+		plot_data<- plot_data %>% group_by(session) %>% mutate(cpue = catch, ccatch=cumsum(catch))
+	}
+	plot_data %>%
+		ggplot(aes(ccatch, cpue)) +
+		geom_point() +
+		geom_smooth(method="lm") +
+		facet_wrap(~session, scales="free") +
+		labs(x ="Cumulative removals", y="CPUE") +
+		theme_bw() +
+		theme(axis.title.x = element_text(face="bold", size=15),
+					axis.title.y = element_text(face="bold", size=15),
+					axis.text = element_text(size=12),
+					legend.position = "bottom")
 })
 
 detection_plot<-reactive({
-	detections<-detections()
+	detections<- detections()
+	mod_type<- ModToFit()
 	catch<- apply(detections,2,sum,na.rm=TRUE)
 	effort<- rep(nrow(detections), length(catch))
 	cpue<- catch/effort
 	ccatch<- cumsum(catch)
-	m<- coef(lm(cpue ~ ccatch))
-	plot(x=ccatch, y=cpue, type="p", col="red", las=1, pch=16,
-			 xlab="CPUE", ylab="Cumulative detections", main="Cumulative detections")
-	abline(a=m[1],b=m[2])
+	plot_data<- tibble(catch=catch, effort=effort, session=1)
+	plot_data %>% mutate(cpue = catch/effort, ccatch = cumsum(catch)) %>%
+		ggplot(aes(ccatch, cpue)) +
+		geom_point() +
+		geom_smooth(method="lm") +
+		facet_wrap(~session, scales="free") +
+		labs(x ="Cumulative detections", y="DPUE") +
+		theme_bw() +
+		theme(axis.title.x = element_text(face="bold", size=15),
+					axis.title.y = element_text(face="bold", size=15),
+					axis.text = element_text(size=12),
+					legend.position = "bottom")
 })
 
-
-
-#summary table of parameter estimates
+abund_plot<- reactive({
+	modname<-ModToFit()
+	mod<-fit_mod()
+	out<- make_abund(mod, modname)
+	out<- out %>% mutate(Session=factor(Session))
+	out %>% ggplot(aes(Session, N, group=1)) +
+		geom_line() +
+		geom_linerange(aes(ymin=lcl, ymax=ucl)) +
+		geom_point(color="red", size=2.5) +
+		labs(x ="Session", y="Abundance (N)") +
+		theme_bw() +
+		theme(axis.title.x = element_text(face="bold", size=15),
+					axis.title.y = element_text(face="bold", size=15),
+					axis.text = element_text(size=12))
+})
 #summary table of parameter estimates for selected model
 summary_tab<-reactive({
-	mod<-fit_mod()
-	mod_type<-ModToFit()
-	if(mod_type!="remCE"){
-	out<-summary(mod)
-	state_tab<-out[[1]]
-	state_tab<-data.frame("Type"="State","Covariate"=row.names(state_tab), state_tab)
-	detect_tab<-out[[2]]
-	detect_tab<-data.frame("Type"="Detect","Covariate"=row.names(detect_tab), detect_tab)
-	out<-rbind(state_tab, detect_tab)
-	data.frame(out)
-	names(out)[6]<-"p"} else
-   if(mod_type=="remCE"){  #CE model doesn't have a summary method
-   	out<-data.frame(mod$results)[2,]
-   	out<-data.frame("Parameter"="lambda", out)
-   	names(out)<-c("Parameter", "Estimate", "SE", "Lwr95", "Upp95", "CV")
-   	out<-out[,1:3]  #hide unwanted columns for now
-   }
+	mod<- fit_mod()
+	mod_type<- ModToFit()
+	out<- make_summary(mod, mod_type)
 	return(out)
 })
 
@@ -250,53 +280,21 @@ abund_tab<-reactive({
 	modname<-ModToFit()
 	mod<-fit_mod()
 	buff<-buff()  #buffer zone radius (for later implementation of extrapolation calculation)
-	if(modname=="remCE") {out<-data.frame(mod$results)[1,]
-	                      out<-data.frame("Parameter"="N", out) } else
-          {out<-calcN(mod)
-		       tmp<-rbind(out$Nhat, out$Nresid)
-           out<-data.frame("Parameter"=c("Nhat", "Nresid"), tmp, "CV"=NA)
-          }
-	names(out)<-c("Parameter", "Estimate", "SE", "Lwr95", "Upp95", "CV")
-	out
+	out<- make_abund(mod, modname)
+	return(out)
 })
 
 DensRast<-reactive({
-	modname<-ModToFit()
-	mod<-fit_mod()
-	buff<-buff()  #buffer zone radius
-	rast<-hab_raster()
-	bound<-site_bound()
+	modname<- ModToFit()
+	mod<- fit_mod()
+	buff<- buff()  #buffer zone radius
+	rast<- hab_raster()
+	bound<- site_bound()
 	#get the names of the coefficients that are actually in the model:
-	form<-state_formula()
-	form_names<-gsub("~", "", form)
-	form_names<-strsplit(form_names, "\\+")
-	#
-	coeffs<-mod$estimates$state$estimates
-	varnames<-names(rast)
+	form<- state_formula()
 
-	#if intercept only, don't bother with focal raster calculations
-	print("estimating density surface")
-	if(form== "~1"){preds.lin<-coeffs[1]} else {
-		#calculate focal rasters, but only for required coefficients
-		rast_incl<-which(varnames %in% names(coeffs))
-		rast_use<-rast[[rast_incl]]
-		filt<-focalWeight(x=rast_use, d=buff, type='circle')
-		rastfocal<-list()
-		for(i in seq_along(names(rast_use))){
-			#make a focal layer for each raster in the stack
-			rastfocal[[i]]<-focal(rast_use[[i]], w=filt,fun=mean, na.rm=TRUE, pad=TRUE)
-		} #end focal loop
-		rastfocal<-stack(rastfocal)
-		vals<-getValues(rastfocal)
-		vals<-cbind(1, vals) #add an intercept
-		preds.lin<-vals %*% coeffs
-	}
-	#back transform from link scale.
-	if(modname=="Occ"){preds<-plogis(preds.lin)} else
-	{preds<-exp(preds.lin)}
-	predras<-raster(rast)
-	predras[]<-preds
-	predras<-mask(predras, bound)
+	predras<- make_dens_surface(rast, mod, modname, form, buff)
+	predras<- terra::mask(predras, vect(bound))
 	predras
 })
 
@@ -305,15 +303,20 @@ DensRast<-reactive({
 #   --- RENDER THE OUTPUTS  ----
 #
 ###########################################################################################
+# Event reactives so only react on button press
+summary_tab_react<- eventReactive(input$Run_model, {summary_tab()})
+
+removal_plot_react<- eventReactive(input$Plot_removal,{removal_plot()})
 
 #render a table of parameter estimates
 output$parameter_table<-renderTable({
-req(input$Run_model)
-  isolate(summary_tab())
+	summary_tab_react()
 }, row.names=FALSE, width=300, caption="Parameter estimates", caption.placement = "top")
 
+
 output$removal_plot<-renderPlot({
-	isolate(removal_plot())
+	#isolate(removal_plot())
+	removal_plot_react()
 })
 
 output$detection_plot<-renderPlot({
@@ -331,12 +334,18 @@ output$AIC <-renderText({
 	isolate(AIC())
 })
 
+output$abund_plot<- renderPlot({
+	req(input$Run_model)
+	isolate(abund_plot())
+})
 #download the density raster
-output$downloadraster <- downloadHandler(
-	filename = "density_raster.tif",
+output$download <- downloadHandler(
+	filename = function() {
+		return('density_raster.tif')
+	},
 	content = function(file) {
-		writeRaster(DensRast(), filename=filename, format="GTiff", overwrite=TRUE)
-	}, contentType = "image/tif"
+		terra::writeRaster(DensRast(), filename=file, overwrite=TRUE)
+	}
 )
 
 #Render a map of the input data
@@ -350,43 +359,9 @@ output$map<-renderLeaflet({
 	opacity<-habopacity()
 	transparency<-1-opacity
   traps<-traps()
-  if(!is.null(traps)){
-	traps<-st_as_sf(traps, coords = c(1, 2), crs=st_crs(bound))
-	traps_buff<-st_buffer(traps, dist=buff())
-  } else {traps<-NULL; traps_buff<-NULL}
-	habras<-hab_raster()
-	if(!is.null(habras)){
-	crs(habras)<-crs(bound) #assume same crs as region boundary
-	habrasproj<-projectRaster(habras, crs="+init=epsg:4326", method="bilinear")
-	nrast<-nlayers(habrasproj)} else {nrast<-0; habrasproj<-NULL} #how many habitat rasters in the stack?
-	palvec<-c("viridis", "magma", "plasma", "inferno")
-	m<-leaflet() %>%
-		addTiles(group="OSM") %>%
-		addProviderTiles("Esri.WorldTopoMap", group="ESRI Topo") %>%
-		addProviderTiles("Esri.WorldImagery", group="ESRI Satellite")
-	count =1
-	while(count<=nrast) {  #adding habitat rasters one at a time
-		m <- m %>% addRasterImage(habrasproj[[count]],
-															colors=colorNumeric(palvec[count], values(habrasproj[[count]]), na.color = "#00000000"),
-															opacity=transparency,
-															layerId = names(habrasproj)[count],
-															group=names(habrasproj)[count]) %>%
-			addLegend(values=values(habrasproj[[count]]) ,
-								pal = colorNumeric(palvec[count], values(habrasproj[[count]]), na.color = "#00000000"),
-								title=names(habrasproj)[count], bins=5,
-								group = names(habrasproj)[count], position="bottomleft")
-		count<-count+1
-	}
-	m <- m %>%	addPolygons(data=st_transform(bound, "+init=epsg:4326"), weight=2, fill=FALSE) %>%
-		addCircleMarkers(data=st_transform(traps, "+init=epsg:4326"), color="red", radius=1, group="traps") %>%
-		addPolygons(data=st_transform(traps_buff, "+init=epsg:4326"), color="red", weight=1, group="traps buffer") %>%
-		addScaleBar("bottomright", options=scaleBarOptions(imperial=FALSE, maxWidth = 200)) %>%
-
-		addLayersControl(baseGroups=c("OSM (default)", "ESRI Topo", "ESRI Satellite"),
-										 overlayGroups = c("traps", "traps buffer", names(habrasproj)),
-										 options=layersControlOptions(collapsed=FALSE)) %>%
-		hideGroup("traps buffer") %>%
-		hideGroup(names(habrasproj)[-1]) #keep the first raster displayed
+  buffer<- buff()
+  habras<-hab_raster()
+  m<- make_leaflet_map(bound, habras, traps, buffer, transparency)
 })
 
 #code to update map with raster predictions
@@ -397,17 +372,23 @@ observeEvent(input$EstDens, {
 	req(input$Run_model)
 	bound<-site_bound()
 	modname<-ModToFit()
-	if(modname=="Occ"){leglab<-"Pr(Occ) for pest"} else {leglab<-"Pest density"}
+	if(modname %in% "occMS"){leglab<-"Pr(Occ) for pest"} else {leglab<-"Pest density"}
 	DensRast <- DensRast()
 	opacity<-habopacity()
 	transparency<-1-opacity
-	crs(DensRast)<-crs(bound)
-	DensRastProj<-projectRaster(DensRast, crs="+init=epsg:4326", method="bilinear")
+	crs(DensRast)<- st_crs(bound)$wkt
+	DensRastProj<- terra::project(DensRast, "epsg:4326", method="bilinear")
 	#need to reimport habitat raster
 	habras<-hab_raster()
-	crs(habras)<-crs(bound) #assume same crs as region boundary
-	habrasproj<-projectRaster(habras, crs="+init=epsg:4326", method="bilinear")
-	pal <- colorNumeric("Reds", values(DensRastProj), na.color = "transparent")
+	crs(habras)<- st_crs(bound)$wkt #assume same crs as region boundary
+	habrasproj<- terra::project(habras, "epsg:4326", method="bilinear")
+	DensRastProj<- raster::raster(DensRastProj)
+	habrasproj<- raster::raster(habrasproj)
+	vrange<- range(values(DensRastProj),na.rm=TRUE)
+	fuzz<- diff(vrange) * 0.01  # add small value so that min and max values appear in plot
+	vrange[1]<- vrange[1] - fuzz
+	vrange[2]<- vrange[2] + fuzz
+	pal <- colorNumeric("Reds", vrange, na.color = "transparent")
 	leafletProxy("map") %>%
 		clearGroup("density raster") %>%
 		removeControl("denslegend") %>%

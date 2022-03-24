@@ -5,6 +5,7 @@ date: "17/11/2020"
 output:
   md_document: default
   html_document: default
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -24,7 +25,7 @@ Consideration of the primary removal method is of great importance because the d
 ```{r,fig.height=4,fig.width=4,fig.align='center',echo=FALSE,fig.cap="Figure 1. Plot of the relationship between CPUE and cumulative catch"}
 catch<- c(40,13,9,8,3,0,0,2,1,1)
 m<- coef(lm(catch/100 ~ cumsum(catch)))
-plot(cumsum(catch), catch/100,  type="p", col="red",pch=16, xlab="CPUE",ylab="Cumulative catch")
+plot(cumsum(catch), catch/100,  type="p", col="red",pch=16, xlab="Cumulative Catch",ylab="CPUE")
 abline(a=m[1], b= m[2])
 
 ```

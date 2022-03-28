@@ -292,7 +292,6 @@ DensRast<-reactive({
 	bound<- site_bound()
 	#get the names of the coefficients that are actually in the model:
 	form<- state_formula()
-
 	predras<- make_dens_surface(rast, mod, modname, form, buff)
 	predras<- terra::mask(predras, vect(bound))
 	predras
@@ -372,7 +371,7 @@ observeEvent(input$EstDens, {
 	req(input$Run_model)
 	bound<-site_bound()
 	modname<-ModToFit()
-	if(modname %in% "occMS"){leglab<-"Pr(Occ) for pest"} else {leglab<-"Pest density"}
+	if(modname %in% "occMS"){leglab<-"Pr(Occ) for pest"} else {leglab<-"Relative density"}
 	DensRast <- DensRast()
 	opacity<-habopacity()
 	transparency<-1-opacity

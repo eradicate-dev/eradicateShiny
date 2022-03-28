@@ -81,7 +81,7 @@ ui<-fluidPage(
 		 hr(),
 		 #SELECT APPROPRIATE MODEL --------------------------------------------------------------------------
 		 fluidRow(
-		 	column(6,conditionalPanel("input.Model!='remGP'",
+		 	column(5,conditionalPanel("input.Model!='remGP'",
 		 				 tipify(checkboxGroupInput(inputId="state_formula", label="habitat covariates",
 		 				 													choices=NULL,
 		 				 													selected=NULL
@@ -89,8 +89,10 @@ ui<-fluidPage(
 		 			 			               If none selected an intercept-only model will be fitted"))
 
 		 	),
-		 	column(3, actionButton(inputId="Run_model", label="Fit model", class = "btn-success"),br(),
+		 	column(5, actionButton(inputId="Run_model", label="Fit model", class = "btn-success"),br(),
 		 				 actionButton(inputId="EstDens", "Estimate Density Surface"),br(),
+		 				 radioButtons(inputId = "DStype", label = "", choices = list("Initial" = "IDens",
+		 				 																																				"Residual" = "RDens"), selected = "IDens", inline=TRUE),br(),
 		 				 downloadButton("download","Download Density Raster")) ,width=7, fluid=TRUE)),
 mainPanel(
 tabsetPanel(id="maintabs", type="tabs",

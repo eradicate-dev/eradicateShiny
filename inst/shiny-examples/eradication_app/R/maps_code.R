@@ -80,7 +80,7 @@ make_dens_surface<- function(rr, mod, modname, form, buff) {
 	rast_incl<-which(varnames %in% names(coeffs))
 	rast_use<-rr[[rast_incl]]
 	fwin<- terra::focalMat(rast_use, buff, type="circle")
-	fwin[fwin>0]<- 1
+	fwin[fwin>0]<- 1 # don't want weighted kernel
 	rastfocal<-list()
 	for(i in seq_along(names(rast_use))){
 	#make a focal layer for each raster in the stack
@@ -94,7 +94,27 @@ make_dens_surface<- function(rr, mod, modname, form, buff) {
 	#back transform from link scale.
 	if(modname %in% "occMS"){preds<-plogis(preds.lin)} else
 	{preds<-exp(preds.lin)}
+	preds_rs<- calc_min_max(preds)
 	predras<- rast(rr)
-	predras[]<-preds
+	predras[]<-preds_rs
 	predras
+}
+
+make_resid_dens_surface<- function(rr, mod, locs, buff) {
+# apply local residual density to buff area around locs
+	locs_buff<- st_buffer(locs, dist=buff)
+	habvals<- terra::extract(rr, vect(locs_buff), cells=TRUE)
+	tr<- traject(mod)
+	tr<- tibble(ID=seq_len(nrow(locs)), R = as.vector(tr[,ncol(tr)]))
+	habvals<- left_join(habvals, tr, by = "ID")
+	predras<- rast(rr)
+	predras[habvals$cell]<- habvals$R
+	predras
+}
+
+calc_min_max<- function(x) {
+	# min-max rescaling
+	mn<- min(x, na.rm=TRUE)
+	mx<- max(x, na.rm=TRUE)
+	return((x - mn)/(mx - mn))
 }

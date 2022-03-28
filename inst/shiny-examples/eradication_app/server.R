@@ -142,6 +142,9 @@ state_formula<-reactive({
 	as.formula(form)
 })
 
+DensToPlot<- reactive({
+	input$DStype
+})
 
 fit_mod<-reactive({
 	#fit the selected model to the data.
@@ -290,10 +293,17 @@ DensRast<-reactive({
 	buff<- buff()  #buffer zone radius
 	rast<- hab_raster()
 	bound<- site_bound()
+	DTP<- DensToPlot()
+	traps<- traps()
+	traps_sf<- st_as_sf(traps, coords=c(1,2), crs=st_crs(bound))
 	#get the names of the coefficients that are actually in the model:
 	form<- state_formula()
-	predras<- make_dens_surface(rast, mod, modname, form, buff)
+	Irast<- make_dens_surface(rast, mod, modname, form, buff)
+	Rrast<- make_resid_dens_surface(Irast, mod, traps_sf, buff)
+	if(DTP %in% "IDens") predras<- Irast
+	else predras<- Rrast
 	predras<- terra::mask(predras, vect(bound))
+	predras<- app(predras, calc_min_max)
 	predras
 })
 

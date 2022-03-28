@@ -94,9 +94,8 @@ make_dens_surface<- function(rr, mod, modname, form, buff) {
 	#back transform from link scale.
 	if(modname %in% "occMS"){preds<-plogis(preds.lin)} else
 	{preds<-exp(preds.lin)}
-	preds_rs<- calc_min_max(preds)
 	predras<- rast(rr)
-	predras[]<-preds_rs
+	predras[]<-preds
 	predras
 }
 
@@ -107,7 +106,7 @@ make_resid_dens_surface<- function(rr, mod, locs, buff) {
 	tr<- traject(mod)
 	tr<- tibble(ID=seq_len(nrow(locs)), R = as.vector(tr[,ncol(tr)]))
 	habvals<- left_join(habvals, tr, by = "ID")
-	predras<- rast(rr)
+	predras<- rr
 	predras[habvals$cell]<- habvals$R
 	predras
 }

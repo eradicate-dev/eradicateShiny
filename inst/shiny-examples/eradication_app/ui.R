@@ -5,14 +5,13 @@ require(shinycssloaders)
 require(shinyBS)
 require(waiter)
 require(sf)
-#require(raster)
 require(terra)
 require(tidyverse)
 require(R.utils)
 require(eradicate)
 require(leaflet)
-require(rgdal)
-require(rgeos)
+#require(rgdal)
+#require(rgeos)
 require(xtable)
 require(markdown)
 ##DEFINE THE USER INTERFACE################################################################################################
@@ -37,7 +36,7 @@ ui<-fluidPage(
 		 				 						 choices=list("Nonspatial removals (single or multi-season)"="remGP",
 		 				 						 						 "Spatial removal data (single season)"="remMN",
 		 				 						 						 "Spatial removal data with auxilary detections (single season)"="remGRM",
-		 				 						 						 "Spatial removal data (multi-season)"="remMNO",
+		 				 						 						 "Spatial removal data (multi-season)"="remMNS",
 		 				 						 						 "Spatial presence/absence data (multiseason)"="occMS"
 		 				 						 ), selected="remGP"), "remGP-aspatial removal data<br>remMN-spatially referenced removal data<br>remGRM-spatially referenced removal data with auxilary detections")
 		 				 ),
@@ -65,7 +64,7 @@ ui<-fluidPage(
 		 								 fileInput(inputId="detections", label="Detection histories (.csv)", accept=c("text/csv", ".csv")))),br(), #end conditional block
 		 fluidRow(
 		 	column(3,
-		 conditionalPanel("input.Model=='remMNO' | input.Model=='occMS'",
+		 conditionalPanel("input.Model=='remMNS' | input.Model=='occMS'",
 		 numericInput(inputId="pperiods", "Sessions", min=0, max=NA, value=1, step=1))))
 		 ),
 		 hr(),
@@ -81,7 +80,7 @@ ui<-fluidPage(
 		 hr(),
 		 #SELECT APPROPRIATE MODEL --------------------------------------------------------------------------
 		 fluidRow(
-		 	column(6,conditionalPanel("input.Model!='remGP'",
+		 	column(5,conditionalPanel("input.Model!='remGP'",
 		 				 tipify(checkboxGroupInput(inputId="state_formula", label="habitat covariates",
 		 				 													choices=NULL,
 		 				 													selected=NULL
@@ -89,8 +88,10 @@ ui<-fluidPage(
 		 			 			               If none selected an intercept-only model will be fitted"))
 
 		 	),
-		 	column(3, actionButton(inputId="Run_model", label="Fit model", class = "btn-success"),br(),
+		 	column(5, actionButton(inputId="Run_model", label="Fit model", class = "btn-success"),br(),
 		 				 actionButton(inputId="EstDens", "Estimate Density Surface"),br(),
+		 				 radioButtons(inputId = "DStype", label = "", choices = list("Initial" = "IDens",
+		 				 																																				"Residual" = "RDens"), selected = "IDens", inline=TRUE),br(),
 		 				 downloadButton("download","Download Density Raster")) ,width=7, fluid=TRUE)),
 mainPanel(
 tabsetPanel(id="maintabs", type="tabs",

@@ -27,11 +27,10 @@ make_summary<- function(mod, mod_type){
 		state<- sum_model(mod_summ, 1)
 		detect<- sum_model(mod_summ, 2)
 		out<- rbind(state, detect)
-	} else if(mod_type %in% "remMNO"){
+	} else if(mod_type %in% "remMNS"){
 		state<- sum_model(mod_summ, 1)
-		growth<- sum_model(mod_summ, 2)
-		detect<- sum_model(mod_summ, 3)
-		out<- rbind(state,growth,detect)
+		detect<- sum_model(mod_summ, 2)
+		out<- rbind(state,detect)
 	} else if(mod_type %in% "occMS") {
 		state<- sum_model(mod_summ, 1)
 		growth<- sum_model(mod_summ, 2)
@@ -74,9 +73,9 @@ make_abund<- function(mod, mod_type){
 			resid<- data.frame(Parameter = "Residual", Session=2, Nhat$Nresid)
 			out<- rbind(total, resid)
 			row.names(out)<- NULL
-		} else if(mod_type %in% "remMNO") {
+		} else if(mod_type %in% "remMNS") {
 			Nhat<- calcN(mod)
-			tmp<- Nhat$Nseason
+			tmp<- Nhat$Nhat
 			seas<- tmp[['.season']]
 			tmp[['.season']]<- NULL
 			total<- data.frame(Parameter = "Total", Session=seas, tmp)

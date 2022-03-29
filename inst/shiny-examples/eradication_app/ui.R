@@ -5,14 +5,13 @@ require(shinycssloaders)
 require(shinyBS)
 require(waiter)
 require(sf)
-#require(raster)
 require(terra)
 require(tidyverse)
 require(R.utils)
 require(eradicate)
 require(leaflet)
-require(rgdal)
-require(rgeos)
+#require(rgdal)
+#require(rgeos)
 require(xtable)
 require(markdown)
 ##DEFINE THE USER INTERFACE################################################################################################
@@ -37,7 +36,7 @@ ui<-fluidPage(
 		 				 						 choices=list("Nonspatial removals (single or multi-season)"="remGP",
 		 				 						 						 "Spatial removal data (single season)"="remMN",
 		 				 						 						 "Spatial removal data with auxilary detections (single season)"="remGRM",
-		 				 						 						 "Spatial removal data (multi-season)"="remMNO",
+		 				 						 						 "Spatial removal data (multi-season)"="remMNS",
 		 				 						 						 "Spatial presence/absence data (multiseason)"="occMS"
 		 				 						 ), selected="remGP"), "remGP-aspatial removal data<br>remMN-spatially referenced removal data<br>remGRM-spatially referenced removal data with auxilary detections")
 		 				 ),
@@ -65,7 +64,7 @@ ui<-fluidPage(
 		 								 fileInput(inputId="detections", label="Detection histories (.csv)", accept=c("text/csv", ".csv")))),br(), #end conditional block
 		 fluidRow(
 		 	column(3,
-		 conditionalPanel("input.Model=='remMNO' | input.Model=='occMS'",
+		 conditionalPanel("input.Model=='remMNS' | input.Model=='occMS'",
 		 numericInput(inputId="pperiods", "Sessions", min=0, max=NA, value=1, step=1))))
 		 ),
 		 hr(),

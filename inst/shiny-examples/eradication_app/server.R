@@ -78,7 +78,7 @@ observeEvent(input$EstDens, {
 	updateTabsetPanel(session, "maintabs",
 										selected = "panel1")
 })
-observe(if(input$Model %in% c("remGRM","remMNO")) {
+observe(if(input$Model %in% c("remGRM","remMNS")) {
 	updateNumericInput(session, "K", value=5*max(removals()) + 50) #sets default value for K on model select
 })
 
@@ -86,7 +86,7 @@ observe(if(input$Model %in% c("remGP")) {
 	updateNumericInput(session, "K", value=5*max(cedata()$catch) + 50) #sets default value for K on model select
 })
 
-observe(if(input$Model %in% c("occMS","remMNO")) {
+observe(if(input$Model %in% c("occMS","remMNS")) {
 	if(!is.null(removals()$session))
 		updateNumericInput(session, "pperiods", value=unstack.data(removals())$T) #update primary periods
 	else
@@ -135,10 +135,13 @@ EstDens<-reactive({
 	})
 
 state_formula<-reactive({
+	modname<- ModToFit()
 	modelvars<-input$state_formula
 	if(length(modelvars)==0) {form="1"} else
 	{form=paste0(modelvars, collapse="+") }
 	form<-paste0("~",form)
+	if(modname %in% "remMNS")
+		form<- paste0(form,"+ .season")
 	as.formula(form)
 })
 
@@ -177,10 +180,8 @@ if(modname== "remGRM"  ) {emf<- eFrameGRM(y=removals,     #removal data
 		                     							 mdetformula=~1,
 		                     							 data=emf,
 		                     							 K=K)} else
-if(modname== "remMNO" )  {emf=eFrameMNO(df=removals, siteCovs = site.data)
-	                        model=remMNO(lamformula=state_formula(), gamformula=~1,
-	                        						 omformula=~1, detformula = ~1, dynamics="trend",
-	                        						 data=emf, K=K)} else
+if(modname== "remMNS" )  {emf=eFrameMNS(df=removals, siteCovs = site.data)
+	                        model=remMNS(lamformula=state_formula(), detformula = ~1, data=emf)} else
 if(modname=="occMS")   {emf=eFrameMS(df=removals, siteCovs=site.data)
                          model=occMS(lamformula = state_formula(), gamformula = ~1,
                          						 epsformula= ~1,detformula= ~1, data=emf)}
@@ -205,7 +206,7 @@ removal_plot<-reactive({
 		effort<- rep(nrow(removals), length(catch))
 		plot_data<- tibble(catch=catch, effort=effort, session=1)
 		plot_data<- plot_data %>% mutate(cpue = catch/effort, ccatch = cumsum(catch))
-	} else if(mod_type %in% c("remMNO","occMS")){
+	} else if(mod_type %in% c("remMNS","occMS")){
 		removals<- removals()
 		tmp<- removals %>% pivot_longer(!session, names_to="period", values_to="catch")
 		plot_data<- tmp %>% group_by(session,period) %>% summarise(catch=sum(catch), .groups="keep")
@@ -294,12 +295,13 @@ DensRast<-reactive({
 	rast<- hab_raster()
 	bound<- site_bound()
 	DTP<- DensToPlot()
+	removals<- removals()
 	traps<- traps()
 	traps_sf<- st_as_sf(traps, coords=c(1,2), crs=st_crs(bound))
 	#get the names of the coefficients that are actually in the model:
 	form<- state_formula()
 	Irast<- make_dens_surface(rast, mod, modname, form, buff)
-	Rrast<- make_resid_dens_surface(Irast, mod, traps_sf, buff)
+	Rrast<- make_resid_dens_surface(Irast, mod, modname, removals, traps_sf, buff)
 	if(DTP %in% "IDens") predras<- Irast
 	else predras<- Rrast
 	predras<- terra::mask(predras, vect(bound))

@@ -23,10 +23,15 @@ make_summary<- function(mod, mod_type){
 			catch<- sum_model(mod_summ, 2)
 		}
 		out<- rbind(state, catch)
-	} else if(mod_type %in% c("remMN","remGRM")) {
+	} else if(mod_type %in% "remMN") {
 		state<- sum_model(mod_summ, 1)
 		detect<- sum_model(mod_summ, 2)
 		out<- rbind(state, detect)
+	}	else if(mod_type %in% "remGRM") {
+			state<- sum_model(mod_summ, 1)
+			detect<- sum_model(mod_summ, 2)
+			mdetect<- sum_model(mod_summ, 3)
+			out<- rbind(state, detect, mdetect)
 	} else if(mod_type %in% "remMNS"){
 		state<- sum_model(mod_summ, 1)
 		detect<- sum_model(mod_summ, 2)

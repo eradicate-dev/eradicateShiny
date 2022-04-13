@@ -34,11 +34,11 @@ ui<-fluidPage(
 		 fluidRow(
 		 	column(7,
 		 				 tipify(radioButtons(inputId="Model", label="Select model",
-		 				 						 choices=list("Nonspatial removals (single or multi-season)"="remGP",
-		 				 						 						 "Spatial removal data (single season)"="remMN",
-		 				 						 						 "Spatial removal data with auxilary detections (single season)"="remGRM",
-		 				 						 						 "Spatial removal data (multi-season)"="remMNS",
-		 				 						 						 "Spatial presence/absence data (multiseason)"="occMS"
+		 				 						 choices=list("Nonspatial removals (single or multi-session)"="remGP",
+		 				 						 						 "Spatial removal data (single session)"="remMN",
+		 				 						 						 "Spatial removal data with auxiliary detections (single session)"="remGRM",
+		 				 						 						 "Spatial removal data (multi-session)"="remMNS",
+		 				 						 						 "Spatial presence/absence data (multisession)"="occMS"
 		 				 						 ), selected="remGP"), "remGP-aspatial removal data<br>remMN-spatially referenced removal data<br>remGRM-spatially referenced removal data with auxilary detections")
 		 				 ),
 		 	#conditionally take input for parameter K, depending on model type.

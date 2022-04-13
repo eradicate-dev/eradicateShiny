@@ -2,7 +2,8 @@
 
 load_file <- function(name, path) {
 	if(!is.null(name)) {
-		csv = vroom::vroom(path, delim = ",")
+		csv = vroom::vroom(path, delim = ",")  %>%
+			select(-any_of("ID"))
 	}
 	else csv<- NULL
 	csv

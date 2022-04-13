@@ -101,7 +101,7 @@ habmean<-reactive({
 	buff<- buff()
 	traps<- traps()
 	traps<- st_as_sf(traps, coords=c(1,2), crs=st_crs(site_bound()))
-	if(buff==0){habvals<-terra::extract(rast, traps)} else
+	if(buff==0){habvals<-terra::extract(rast, vect(traps))} else
 	{ traps<- st_buffer(traps, buff)
 		habvals<-terra::extract(rast, vect(traps), fun=mean, na.rm=TRUE)
 		}

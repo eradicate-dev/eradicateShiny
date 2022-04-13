@@ -90,10 +90,12 @@ ui<-fluidPage(
 
 		 	),
 		 	column(5, actionButton(inputId="Run_model", label="Fit model", class = "btn-success"),br(),
+		 				 conditionalPanel("input.Model!='remGP'",
 		 				 actionButton(inputId="EstDens", "Estimate Density Surface"),br(),
 		 				 radioButtons(inputId = "DStype", label = "", choices = list("Initial" = "IDens",
 		 				 																																				"Residual" = "RDens"), selected = "IDens", inline=TRUE),br(),
-		 				 downloadButton("download","Download Density Raster")) ,width=7, fluid=TRUE)),
+		 				 downloadButton("download","Download Density Raster")
+		 				 )) ,width=7, fluid=TRUE)),
 mainPanel(
 tabsetPanel(id="maintabs", type="tabs",
 			#Map tab

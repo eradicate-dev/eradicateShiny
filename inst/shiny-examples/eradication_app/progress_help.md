@@ -71,33 +71,61 @@ models that relax this assumption and allow for recruitment and natural
 losses to the population in addition to the removals are in the
 pipeline. The following models are currently available in the app.
 
--   `remGP`
+-   `Non-spatial removals`
     -   This model implements the catch-effort model of Gould & Pollock
         (1996). It is an aspatial model which means that removals are
         aggregated over all removal devices for each period. This means
         that device locations and habitat information are not used or
         required for this model. The catch and effort data are assembled
         from the removal histories by summing removals from each device,
-        separately for each period. Effort data is calculated as the
-        number of devices set in each period.
--   `remMN`
+        separately for each period. Effort data can be calculated as the
+        number of devices set or the amount of search effort expended in
+        each period.
+-   `Spatial removals (single session)`
     -   This model implements the multinomial removal model of Haines
-        (2018). Unlike remGP, device locations are required for this
-        model and habitat information can be used to model spatial
-        variation in initial abundance. Device locations are assumed to
-        be independent
--   `remGRM`
+        (2018). Unlike the non-spatial model, device locations are
+        required for this model and habitat information can be used to
+        model spatial variation in initial abundance. Device locations
+        are assumed to be independent
+-   `Spatial removals with auxiliary detections (single session)`
     -   This model estimates the generalised removal model of Dorazio et
         al. (2005). However, it also has the facility to include
         additional monitoring data into the analysis in addition to the
-        removal data. The additional monitoring data are assumed to be
-        derived from monitoring devices set in the same general vicinity
-        (or a subset thereof) as the removal devices. Hence, the
-        additional monitoring data should have the same number of rows
-        and columns as the removal data and are uploaded into the app
-        using `detection histories` button. Removal devices without an
-        associated monitoring device should hav an `NA` inserted for the
-        appropriate row in `detection histories`.
+        removal data. The additional monitoring data can be derived from
+        any index of abundance and are assumed to be collected in the
+        same general vicinity (or a subset thereof) as the removal
+        devices. Hence, the additional monitoring data should have the
+        same number of rows and columns as the removal data and are
+        uploaded into the app using `detection histories` button.
+        Removal devices without an associated monitoring device should
+        hav an `NA` inserted for the appropriate row in
+        `detection histories`.
+-   `Spatial removals (Multi session)`
+    -   This model generalises the single session removal model of
+        Haines (2018) to multiple sessions. This is achieved by
+        ‘stacking’ data from multiple sessions and including an
+        additional variable to estimate session-specific parameters or a
+        single trend. Detection probability is currently assumed to be
+        the same for each session in the app but the model does allow
+        session specific estimates of detection. This model is useful
+        for estimating session specific abundance estimates without
+        attempting to estimate how abundance changed (i.e. no explicit
+        dynamic model parameters such as survival or recruitment).
+-   `Spatial presence/absence (Multi session)`
+    -   This model estimates the dynamic multi-season occupancy model of
+        MacKenzie et al. (2003) and only requires recording of
+        presence/absence data at each spatial location. However, the
+        model can also accept count data as input and will truncate this
+        internally to presence/absence data. This model generates
+        estimates of the ‘occupancy’ probability for each site and will
+        be most useful towards the final stages of the eradication
+        program. In the final stages when eradication appears likely,
+        abundance becomes less important and focus shifts to the
+        proportion of the region occupied. The model is dynamic and
+        generates estimates of the ‘extinction’ and ‘colonisation’ rate.
+        However, at present the apps assume that these are constant and
+        do not vary by session. Future verison of the app will allow
+        explicit models for the colonisation and extinction parameters.
 
 ### Inputs
 
@@ -129,15 +157,32 @@ All models in the progress app require inputs in particular formats
 
 ## Analysis
 
-Once the data for a particular model has been uploaded, pressing the
-`fit model` button will run the selected model and print the output in
-the “fitted model” pane. Outputs include the parameter estimates and a
-prediction of both the initial population size within the region based
-on the monitored sites as well as an estimate of the residual population
-size follwoing the last removal period. Any habitat covariates uploaded
-previously should also be available and can be selected in the model if
-desired. The `Estimate density surface` button displays a map of the
-predicted initial density across the region.
+Once the data for a particular model has been uploaded, the following
+functions can be performed:
+
+-   `plot map`
+    -   will produce a map of the region, plotted on background
+        topographic or satellite info for the region. Device locations
+        and habitat raster data can also be plotted.
+-   `plot removals`
+    -   will produce plots of the CPUE versus cumulative catch similar
+        to figure 1. For multi-session data a separate plot is produced
+        for each session.
+-   `fit model`
+    -   will run the selected model and print the output in the “fitted
+        model” pane. Outputs include the parameter estimates and a
+        prediction of both the initial population size within the region
+        based on the monitored sites as well as an estimate of the
+        residual population size following the last removal period. Any
+        habitat covariates uploaded previously should also be available
+        and can be selected in the model if desired.
+-   `Estimate density surface`
+    -   will displays a map of the predicted relative density across the
+        region. The relative density can be calculated for either the
+        initial population (i.e. before removals) or the residual
+        population (i.e. following the final removal occasion). This is
+        most useful if habitat variables have been included in the
+        model.
 
 ### References
 
@@ -151,3 +196,8 @@ Fisheries and Aquatic Sciences, 54, 890–897.
 
 Haines, L. M. (2019). Multinomial N-mixture models for removal sampling.
 Biometrics, September, 1–9. <https://doi.org/10.1111/biom.13147>
+
+MacKenzie, D. I., Nichols, J. D., Hines, J. E., Knutson, M. G., &
+Franklin, A. B. (2003). Estimating site occupancy, colonization, and
+local extinction when a species is detected imperfectly. Ecology, 84(8),
+2200–2207. <doi:10.1890/02-3090>

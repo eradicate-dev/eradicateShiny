@@ -14,11 +14,6 @@ particular, the practitioner should have read
 `Spatial considerations: Extent, Management Zones and Sampling Units`
 and `Assessing Progress`.
 
-This user guide also makes use of the example data provided in the
-accompanying ZIP file. Eventually, the app will be able to automatically
-load these examples directly but for now, please unzip these files into
-a convenient location.
-
 ### Assessing progress
 
 Consideration of the primary removal method is of great importance
@@ -53,23 +48,36 @@ Figure 1. Plot of the relationship between CPUE and cumulative catch
 
 ### Models
 
-The models in the eradication progress app are based on closed
-population removal estimators. This means that the models require data
-on the total catch of individuals of the pest species removed, at each
-sampling location, for each of `J` periods (or “sessions”). Here a
-period refers to a distinct period of time where removal of the pest is
-actively occurring. For example, rodent trapping might be undertaken
-over four consecutive nights, once a month for five months. Hence, there
-are five periods or sessions with each period consisting of four nights
-trapping. Data from at least three periods are required for use in the
-models used here. These models also assume that the population is closed
-for the duration of the eradication program. In the example above this
-would mean that the rodent population is not subject to births,
-immigration, emigration or natural mortality over the five periods so
-the only change to the population is due to the removals. Alternative
-models that relax this assumption and allow for recruitment and natural
-losses to the population in addition to the removals are in the
-pipeline. The following models are currently available in the app.
+The models in the Eradication Progress tool are based primarily on
+removal data. This means that the models require data on the total catch
+of individuals of the pest species removed, at each sampling location,
+for each removal phase (or “session”). Here a “session” refers to a
+distinct phase of time where removal of the pest is actively occurring.
+For example, rodent trapping might be undertaken over 20 consecutive
+nights and then repeated again 6 months later. Hence, there are two
+sessions with each session consisting of 20 nights trapping (i.e. 20
+periods). The distinction between “sessions” and “periods” within
+sessions is important as it underlies the data format required by the
+models used here. Populations are assumed to be closed within a session.
+That means, within a session, the population is not subject to births,
+(natural) deaths, immigration or emigration and the only change to the
+population is caused by the removal process over each period. However,
+between sessions, populations can be assumed to be subject to these
+natural additions and/or losses. The Eradication Progress tool contains
+models which cater for both these scenarios.
+
+In general, the Eradication Progress tool relies on three different
+types of data. 1) spatial data of the region of interest, 2) spatial
+data for variables that might influence habitat preferences of the pest
+species 3) locations of removal devices (i.e. trap locations) and 4)
+records of the number of pest removals for each location, session and
+period. The tool also caters for aspatial data which does not require
+device or pest locations. This sort of data is usually collected during
+search-encounter type removals where there are no set device locations
+(e.g. aerial shooting from a helicopter). All models used here require
+data from at least three (secondary) periods within a session. Below we
+outline each of the data model types available within the Eradication
+Progress tool.
 
 -   `Non-spatial removals`
     -   This model implements the catch-effort model of Gould & Pollock
@@ -81,25 +89,35 @@ pipeline. The following models are currently available in the app.
         separately for each period. Effort data can be calculated as the
         number of devices set or the amount of search effort expended in
         each period.
+-   `Non-spatial removals + index data`
+    -   This model is the same as the non-spatial removal model detailed
+        above but also allows index data to be included in the joint
+        likelihood. The index data can be any index of abundance
+        (e.g. no. of detections on a camera etc.). Index data can be
+        useful for detecting the presence of individuals when the
+        removal methods fails to detect any. The idea is that the index
+        should decrease proportionally as pest density decreases due to
+        the removal method. Index data and its associated effort
+        (e.g. camera nights) should be included as extra columns labeled
+        `index` and `ieffort`, respectively.
 -   `Spatial removals (single session)`
     -   This model implements the multinomial removal model of Haines
         (2018). Unlike the non-spatial model, device locations are
-        required for this model and habitat information can be used to
-        model spatial variation in initial abundance. Device locations
-        are assumed to be independent
--   `Spatial removals with auxiliary detections (single session)`
+        required for this model and habitat information (`*.tif`) can be
+        used to model spatial variation in initial abundance. Device
+        locations are assumed to be independent.
+-   `Spatial removals with index data (single session)`
     -   This model estimates the generalised removal model of Dorazio et
         al. (2005). However, it also has the facility to include
-        additional monitoring data into the analysis in addition to the
-        removal data. The additional monitoring data can be derived from
-        any index of abundance and are assumed to be collected in the
-        same general vicinity (or a subset thereof) as the removal
-        devices. Hence, the additional monitoring data should have the
-        same number of rows and columns as the removal data and are
-        uploaded into the app using `detection histories` button.
-        Removal devices without an associated monitoring device should
-        hav an `NA` inserted for the appropriate row in
-        `detection histories`.
+        additional index monitoring data into the analysis in addition
+        to the removal data. The index monitoring data can be derived
+        from any index of abundance and are assumed to be collected in
+        the same general vicinity (or a subset thereof) as the removal
+        devices. Hence, the index data should have the same number of
+        rows and columns as the removal data and are uploaded into the
+        app using `detection histories` button. Removal devices without
+        an associated monitoring device should have an `NA` inserted for
+        the appropriate row in `detection histories`.
 -   `Spatial removals (Multi session)`
     -   This model generalises the single session removal model of
         Haines (2018) to multiple sessions. This is achieved by
@@ -124,36 +142,74 @@ pipeline. The following models are currently available in the app.
         proportion of the region occupied. The model is dynamic and
         generates estimates of the ‘extinction’ and ‘colonisation’ rate.
         However, at present the apps assume that these are constant and
-        do not vary by session. Future verison of the app will allow
+        do not vary by session. Future versions of the app will allow
         explicit models for the colonisation and extinction parameters.
 
 ### Inputs
 
-All models in the progress app require inputs in particular formats
+All models in the progress app require inputs in particular formats. For
+a more complete description of data formats, refer to the document
+`eradication_progress_data_req.pdf`:
 
+-   `catch and effort data`
+    -   For the non-spatial models, the catch and effort data are
+        assembled by summing removals for each period over the entire
+        region of interest, separately for each session. Effort data is
+        calculated similarly. The required data should be entered into a
+        spreadsheet (`*.csv` file) with columns `catch` recording the
+        removals for each period, `effort` recording the trapping/search
+        effort during the period and optionally `session` recording the
+        session number (for multi-session data). If data are for a
+        single session, this column can be omitted. If index data and
+        associated effort are also available for each of the removal
+        periods then it should be included as extra columns labeled
+        `index` and `ieffort`, respectively.
 -   `Region boundary`
-    -   The shapefiles that define the region of interest. Select all
-        files (`.shp`, `.shp`, `.dbf`, `.prj` ) as a group. Shapefies
-        should be projected, rather than in geographic format.
+    -   Information is required about the region of interest where the
+        eradication operation is being undertaken. The minimal
+        requirement is geo-spatial vector data of the region boundary
+        either in ESRI shapefile format, packaged in a ZIP file or in
+        the non-proprietary GeoPackage format (`*.gpkg`). The boundary
+        can comprise single or multiple polygons and can contain ‘holes’
+        (i.e. due to the presence of non-habitat such as a lake). The
+        region should be in a projected coordinate reference system
+        (crs) with units in meters (m).
 -   `Habitat raster`
-    -   A `.tif` file(s) containing a map of habitat variable(s) that
-        could be used predict spatially-varying abundance across the
-        region. Multiple `.tif` files can be selected.
+    -   Information on biophysical variables that might influence pest
+        densities can be important information that can help delineate
+        areas of potential high risk of infestation by the pest species.
+        This information can be supplied in the form of one or more
+        raster files, one for each variable. Habitat rasters can also
+        comprise derived variables, such as outputs from species
+        distribution models (SDMs). Raster data should be supplied in
+        GeoTiff format (`*.tif`) using the same coordinate reference
+        system as the region shapefile above with units in meters. The
+        raster can be any resolution however care should be observed for
+        large regions with a small resolution resulting in large files
+        that may overwhelm available memory
 -   `Trap locations`
-    -   A `.csv` file containing coordinates of `M` removal devices in
-        the same projection as `region boundary`. The first column
-        should be the easting (x) coordinate and the second the northing
-        (y).
+    -   For the spatial models, a spreadsheet (`*.csv file`) recording
+        the locations of each device is required. This dataset should
+        have device locations coordinates with `X` (easting) and `Y`
+        (northing) in the first and second columns, respectively. The
+        coordinate reference system should be the same as the shapefile
+        of the region boundary. This dataset should also have the same
+        number of rows as the removal histories data.
 -   `Removal histories`
-    -   A `.csv` file containing a `M` x `J` matrix of removals for each
-        of `M` removal device in rows and `J` periods for each device in
-        columns.
+    -   The removal data should be in a spreadsheet (`*.csv` file) with
+        removals for each period in columns and devices in rows. Hence,
+        an operation using 50 traps set for 6 nights would have
+        corresponding removal data organized in 50 rows and 6 columns.
 -   `Detection histories`
-    -   A `.csv` file containing a `M` x `J` matrix of detections or
-        counts for monitoring devices set in the same general locations
-        as the removal devices. Removal devices without an associated
-        monitoring device should have an `NA` inserted in the
-        appropriate row in `detection histories`.
+    -   The index monitoring data are assumed to be derived from
+        monitoring devices set in the same general vicinity (or a subset
+        thereof) as the removal devices (e.g. camera traps. Hence, the
+        additional monitoring data should have the same number of rows
+        and columns as the removal data. The index data can be any index
+        of abundance derived from monitoring data (e.g. no. of
+        detections on a camera etc.). Removal devices without an
+        associated index monitoring device should have an `NA` inserted
+        in the appropriate row in `detection histories`.
 
 ## Analysis
 

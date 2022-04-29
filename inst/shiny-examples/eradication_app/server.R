@@ -158,9 +158,8 @@ fit_mod<-reactive({
  modname<- ModToFit()
  pperiods<- pperiods()
  K<- K()
-
        #extract habitat variables only for spatial models, not otherwise
-if(modname!="remGP") {site.data<- habmean()}
+if(modname!="remGP" & modname != "remGPI") {site.data<- habmean()}
 if(modname== "remGP") {if("session" %in% colnames(cedata)) {
 														emf<- eFrameGP(cedata$catch, cedata$effort, session=cedata$session)
 												}
@@ -299,10 +298,10 @@ summary_tab<-reactive({
 AIC<-reactive({
 	mod<-fit_mod()
 	mod_type<-ModToFit()
-	if(mod_type!="remGP"){
+	if(mod_type != "remGP" & mod_type != "remGPI"){
 	   AIC<-mod$AIC
-	   out<-paste0("AIC=",round(AIC, 2))} else
-	if(mod_type=="remGP"){out<-NULL}  #no AIC for remGP
+	   out<-paste0("AIC=",round(AIC, 2))}
+	else out<-NULL  #no AIC for remGP
 	  return(out)
 })
 

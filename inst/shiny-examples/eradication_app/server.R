@@ -82,7 +82,7 @@ observe(if(input$Model %in% c("remGRM","remMNS")) {
 	updateNumericInput(session, "K", value=5*max(removals()) + 50) #sets default value for K on model select
 })
 
-observe(if(input$Model %in% c("remGP")) {
+observe(if(input$Model %in% c("remGP","remGPI")) {
 	updateNumericInput(session, "K", value=5*max(cedata()$catch) + 50) #sets default value for K on model select
 })
 
@@ -161,12 +161,25 @@ fit_mod<-reactive({
 
        #extract habitat variables only for spatial models, not otherwise
 if(modname!="remGP") {site.data<- habmean()}
-if(modname== "remGP") {if("session" %in% colnames(cedata))
+if(modname== "remGP") {if("session" %in% colnames(cedata)) {
 														emf<- eFrameGP(cedata$catch, cedata$effort, session=cedata$session)
-												 else
-												 		emf<- eFrameGP(cedata$catch, cedata$effort)
+												}
+												 else {
+												 	 emf<- eFrameGP(cedata$catch, cedata$effort)
+												 }
 	                       model<- remGP(emf)
-	                       } else
+	                     } else
+if(modname == "remGPI") {
+											if("session" %in% colnames(cedata)) {
+													emf<- eFrameGP(cedata$catch, cedata$effort, session=cedata$session,
+																				index = cedata$index, ieffort =  cedata$ieffort)
+											}
+											else {
+													emf<- eFrameGP(cedata$catch, cedata$effort,
+																				 index = cedata$index, ieffort =  cedata$ieffort)
+											}
+												model<- remGP(emf)
+											} else
 if(modname== "remMN" )   {emf<-eFrameR(y=removals, siteCovs=site.data, obsCovs=NULL) #specify details
 	                       	model<-remMN(lamformula=state_formula(), detformula = ~1, data=emf)
 	                       } else
@@ -191,7 +204,7 @@ model
 #removal plot
 removal_plot<-reactive({
 	mod_type<- ModToFit()
-	if(mod_type == "remGP"){
+	if(mod_type == "remGP" | mod_type == "remGPI"){
 		plot_data<- cedata()
 		if(!("session" %in% colnames(plot_data))) {
 			plot_data$session<- 1
@@ -226,15 +239,29 @@ removal_plot<-reactive({
 })
 
 detection_plot<-reactive({
-	detections<- detections()
 	mod_type<- ModToFit()
-	catch<- apply(detections,2,sum,na.rm=TRUE)
-	effort<- rep(nrow(detections), length(catch))
-	cpue<- catch/effort
-	ccatch<- cumsum(catch)
-	plot_data<- tibble(catch=catch, effort=effort, session=1)
-	plot_data %>% mutate(cpue = catch/effort, ccatch = cumsum(catch)) %>%
-		ggplot(aes(ccatch, cpue)) +
+	if(mod_type == "remGPI") {
+		plot_data<- cedata()
+		if("index" %in% colnames(plot_data) & "ieffort" %in% colnames(plot_data)) {
+		if(!("session" %in% colnames(plot_data))) {
+			plot_data$session<- 1
+			plot_data<- plot_data %>% mutate(cpue = index/ieffort, ccatch = cumsum(index))
+		}
+		else {
+			plot_data<- plot_data %>% group_by(session) %>% mutate(cpue = index/ieffort, ccatch = cumsum(index))
+		}
+		}
+	}
+	else if(mod_type == "remGRM") {
+		detections<- detections()
+		catch<- apply(detections,2,sum,na.rm=TRUE)
+		effort<- rep(nrow(detections), length(catch))
+		cpue<- catch/effort
+		ccatch<- cumsum(catch)
+		plot_data<- tibble(catch=catch, effort=effort, session=1)
+		plot_data %>% mutate(cpue = catch/effort, ccatch = cumsum(catch))
+	}
+		plot_data %>% ggplot(aes(ccatch, cpue)) +
 		geom_point() +
 		geom_smooth(method="lm") +
 		facet_wrap(~session, scales="free") +

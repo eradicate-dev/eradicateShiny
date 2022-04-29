@@ -50,10 +50,8 @@ ui<-fluidPage(
 		 									 ))),
 		 hr(),
 		 wellPanel(
-		 	conditionalPanel("input.Model == 'remGP'",
+		 	conditionalPanel("input.Model == 'remGP' | input.Model == 'remGPI'",
 		 									 fileInput(inputId="cedata", label="Catch and Effort data (.csv)", accept=c("text/csv", ".csv"))),
-		 	conditionalPanel("input.Model == 'remGPI'",
-		 									 fileInput(inputId="cedata", label="Catch, Effort and Index data (.csv)", accept=c("text/csv", ".csv"))),
 		 	#hide spatial input tools if using an aspatial model
 		 	conditionalPanel("input.Model != 'remGP' && input.Model != 'remGPI'",
 		 fileInput(inputId="boundary", label="Region boundary zipfile (.zip)",
@@ -106,7 +104,7 @@ tabsetPanel(id="maintabs", type="tabs",
 							    leafletOutput(outputId = "map", height=700)),
 			tabPanel(title="Removals", value="panel3",
 							 fluidRow( plotOutput(outputId="removal_plot", width="60%")),
-							 conditionalPanel("input.Model == 'remGP' | input.Model == 'remGPI'",
+							 conditionalPanel("input.Model == 'remGRM' | input.Model == 'remGPI'",
 							 fluidRow( plotOutput(outputId="detection_plot", width="60%"))) #end conditional panel
 							 ),
 			#Fitted models tab

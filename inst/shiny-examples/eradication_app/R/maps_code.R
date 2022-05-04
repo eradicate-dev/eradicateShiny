@@ -98,7 +98,7 @@ make_dens_surface<- function(rr, mod, modname, form, buff) {
 	#back transform from link scale.
 	if(modname %in% "occMS"){preds<-plogis(preds.lin)} else
 	{preds<-exp(preds.lin)}
-	predras<- rast(rr)
+	predras<- rast(rr, nlyrs=1)
 	predras[]<-preds
 	predras
 }

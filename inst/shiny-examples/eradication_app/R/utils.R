@@ -24,10 +24,31 @@ make_summary<- function(mod, mod_type){
 			catch<- sum_model(mod_summ, 2)
 		}
 		out<- rbind(state, catch)
-	} else if(mod_type %in% c("remMN","remGRM")) {
+	} else if(mod_type == "remGPI") {
+		if("efitGPlist" %in% class(mod)) n<- length(mod)
+		else
+			n<- 1
+		if(n > 1){
+			state<- mod_summ %>% map_dfr(sum_model, 1, .id="Session")
+			catch<- mod_summ %>% map_dfr(sum_model, 2, .id="Session")
+			det<- mod_summ %>% map_dfr(sum_model, 3, .id="Session")
+		}
+		else{
+			state<- sum_model(mod_summ, 1)
+			catch<- sum_model(mod_summ, 2)
+			det<- sum_model(mod_summ, 3)
+		}
+		out<- rbind(state, catch, det)
+	}
+	else if(mod_type %in% "remMN") {
 		state<- sum_model(mod_summ, 1)
 		detect<- sum_model(mod_summ, 2)
 		out<- rbind(state, detect)
+	}	else if(mod_type %in% "remGRM") {
+			state<- sum_model(mod_summ, 1)
+			detect<- sum_model(mod_summ, 2)
+			mdetect<- sum_model(mod_summ, 3)
+			out<- rbind(state, detect, mdetect)
 	} else if(mod_type %in% "remMNS"){
 		state<- sum_model(mod_summ, 1)
 		detect<- sum_model(mod_summ, 2)
@@ -51,7 +72,7 @@ sum_model<- function(x, id) {
 }
 
 make_abund<- function(mod, mod_type){
-	if(mod_type == "remGP") {
+	if(mod_type == "remGP" | mod_type == "remGPI") {
 		Nhat<- calcN(mod, CI.calc="norm")
 		if("efitGPlist" %in% class(mod)) n<- length(mod)
 		else

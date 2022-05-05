@@ -19,7 +19,7 @@ ui<-fluidPage(
 	#splashscreen
 	use_waiter(),
 	waiterShowOnLoad(html = '<p col="white">Loading assessment app...</p>
-									 <img src="logos.gif">', color="#666666"),
+									 <img src="banner.png" height="200">', color="#666666"),
 	tags$head(
 		tags$style(HTML("hr {border-top: 1px solid #000000;}",
 										".shiny-input-container {margin-bottom: -15px; margin-top: -15px}"))

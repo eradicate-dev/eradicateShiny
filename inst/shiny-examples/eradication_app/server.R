@@ -1,7 +1,7 @@
 ##DEFINE THE SERVER#####################################################################################################
 server<-function(input, output, session){
 	#splashscreen
-	Sys.sleep(4.5) # delay
+	Sys.sleep(1.5) # delay
 	waiter_hide() #hide splash screen
 #Boundary of study area, in a shapefile
 	site_bound<-reactive({

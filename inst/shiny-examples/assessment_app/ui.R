@@ -26,9 +26,7 @@ ui<-fluidPage(
 	),
 	titlePanel(title=div(
 											 "Pre-eradication assessment",
-											 img(src="ciss_logo.jpg", height=50, align="right"),
-											 img(src="manaki_logo.png", height=50, align="right"),
-											 img(src="ari_logo.jpg", height=70, align="right"))),
+											 img(src="header_banner.png", height=75, align="right"))),
 	sidebarLayout(
 		sidebarPanel(#CHOOSE A MODEL---------------------------------- ---------------------------------------------------
 								 fluidRow(column(5, radioButtons(inputId="Model", label="Select a model to use",

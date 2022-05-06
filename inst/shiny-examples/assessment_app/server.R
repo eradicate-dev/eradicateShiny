@@ -81,7 +81,6 @@ activeREST<-reactive({
 habmean<-reactive({
 	rast<-hab_raster()
 	buff<-buff()
-	browser()
 	dets<-detectors()
 	if(buff==0)		{habvals<-raster::extract(rast, dets, df=TRUE)} else
 		            {habvals<-raster::extract(rast, dets, buffer=buff, fun=mean, df=TRUE)}

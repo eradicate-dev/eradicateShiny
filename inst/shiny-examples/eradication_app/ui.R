@@ -28,7 +28,7 @@ ui<-fluidPage(
 		"Eradication Progress Monitoring",
 		img(src="ari_logo.jpg", height=50, align="right"),
 		img(src="ciss_logo.jpg", height=50, align="right"),
-		img(src="manaki_logo.png", height=50, align="right"))),
+		img(src="manaki_logo.png", height=70, align="right"))),
 	sidebarLayout(
 		sidebarPanel(#INPUT THE REGION, detector and detections FILEs ---------------------------------------------------
 		 fluidRow(

@@ -1,7 +1,7 @@
 Package: eradicateShiny
 Type: Package
 Title: Shiny front-end for eradicate pacakge
-Version: 0.1.0
+Version: 0.2.0
 Author: Michael Scroggie
 Maintainer: Michael Scroggie <michael.scroggie@delwp.vic.gov.au>
 Description: A package providing a Shiny front end for the eradicate package

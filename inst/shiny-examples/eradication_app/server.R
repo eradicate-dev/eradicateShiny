@@ -79,11 +79,11 @@ observeEvent(input$EstDens, {
 										selected = "panel1")
 })
 observe(if(input$Model %in% c("remGRM","remMNS")) {
-	updateNumericInput(session, "K", value=5*max(removals()) + 50) #sets default value for K on model select
+	updateNumericInput(session, "K", value=5*max(removals()) + 100) #sets default value for K on model select
 })
 
 observe(if(input$Model %in% c("remGP","remGPI")) {
-	updateNumericInput(session, "K", value=5*max(cedata()$catch) + 50) #sets default value for K on model select
+	updateNumericInput(session, "K", value=5*max(cedata()$catch) + 100) #sets default value for K on model select
 })
 
 observe(if(input$Model %in% c("occMS","remMNS")) {
@@ -166,7 +166,7 @@ if(modname== "remGP") {if("session" %in% colnames(cedata)) {
 												 else {
 												 	 emf<- eFrameGP(cedata$catch, cedata$effort)
 												 }
-	                       model<- remGP(emf)
+	                       model<- remGP(emf, K=K)
 	                     } else
 if(modname == "remGPI") {
 											if("session" %in% colnames(cedata)) {
@@ -177,7 +177,7 @@ if(modname == "remGPI") {
 													emf<- eFrameGP(cedata$catch, cedata$effort,
 																				 index = cedata$index, ieffort =  cedata$ieffort)
 											}
-												model<- remGP(emf)
+												model<- remGP(emf, K=K)
 											} else
 if(modname== "remMN" )   {emf<-eFrameR(y=removals, siteCovs=site.data, obsCovs=NULL) #specify details
 	                       	model<-remMN(lamformula=state_formula(), detformula = ~1, data=emf)

@@ -1,4 +1,6 @@
-##DEFINE THE SERVER#####################################################################################################
+## SERVER eradication progress
+######################################################
+
 server<-function(input, output, session){
 	#splashscreen
 	Sys.sleep(1.5) # delay
@@ -78,7 +80,7 @@ observeEvent(input$EstDens, {
 	updateTabsetPanel(session, "maintabs",
 										selected = "panel1")
 })
-observe(if(input$Model %in% c("remGRM","remMNS")) {
+observe(if(input$Model %in% c("remGRM")) {
 	updateNumericInput(session, "K", value=5*max(removals()) + 100) #sets default value for K on model select
 })
 
@@ -86,13 +88,19 @@ observe(if(input$Model %in% c("remGP","remGPI")) {
 	updateNumericInput(session, "K", value=5*max(cedata()$catch) + 100) #sets default value for K on model select
 })
 
-observe(if(input$Model %in% c("occMS","remMNS")) {
-	if(!is.null(removals()$session))
-		updateNumericInput(session, "pperiods", value=unstack.data(removals())$T) #update primary periods
+observe(if(input$Model %in% c("occMS","remMN","remGRM")) {
+	if("session" %in% colnames(removals()))
+		updateNumericInput(session, "pperiods", value=max(removals()$session)) #update primary periods
 	else
 		updateNumericInput(session, "pperiods", value=1)
 })
 
+observe(if(input$Model %in% c("remGP","remGPI")) {
+	if("session" %in% colnames(cedata()))
+		updateNumericInput(session, "pperiods", value=max(cedata()$session)) #update primary periods
+	else
+		updateNumericInput(session, "pperiods", value=1)
+})
 ###################################################################################################
 #reactive function for habitat value extraction from raster
 ###################################################################################################
@@ -136,11 +144,12 @@ EstDens<-reactive({
 
 state_formula<-reactive({
 	modname<- ModToFit()
+	pperiods=pperiods()
 	modelvars<-input$state_formula
 	if(length(modelvars)==0) {form="1"} else
 	{form=paste0(modelvars, collapse="+") }
 	form<-paste0("~",form)
-	if(modname %in% "remMNS")
+	if(pperiods > 1 & modname != "occMS")
 		form<- paste0(form,"+ .season")
 	as.formula(form)
 })
@@ -179,24 +188,38 @@ if(modname == "remGPI") {
 											}
 												model<- remGP(emf, K=K)
 											} else
-if(modname== "remMN" )   {emf<-eFrameR(y=removals, siteCovs=site.data, obsCovs=NULL) #specify details
+if(modname== "remMN" )   {if(pperiods == 1) {
+													emf<-eFrameR(y=removals, siteCovs=site.data, obsCovs=NULL) #specify details
 	                       	model<-remMN(lamformula=state_formula(), detformula = ~1, data=emf)
+													}
+													else{
+														emf=eFrameMNS(rem=removals, siteCovs = site.data)
+														model=remMNS(lamformula=state_formula(), detformula = ~1, data=emf)
+													}
 	                       } else
-if(modname== "remGRM"  ) {emf<- eFrameGRM(y=removals,     #removal data
+if(modname== "remGRM"  ) {if(pperiods == 1) {
+													emf<- eFrameGRM(y=removals,     #removal data
 																					ym=detections,  #these are secondary monitoring detection data
-																					numPrimary=1,
 																					siteCovs = site.data)
-		                     model<- remGRM(lamformula=state_formula(),
-		                     							 phiformula=~1,
+		                    	model<- remGRM(lamformula=state_formula(),
 		                     							 detformula=~1,
 		                     							 mdetformula=~1,
 		                     							 data=emf,
-		                     							 K=K)} else
-if(modname== "remMNS" )  {emf=eFrameMNS(df=removals, siteCovs = site.data)
-	                        model=remMNS(lamformula=state_formula(), detformula = ~1, data=emf)} else
+		                     							 K=K)}
+													else {
+														emf<- eFrameGRMS(rem=removals,     #removal data
+																						idx=detections,  #these are secondary monitoring detection data
+																						siteCovs = site.data)
+														model<- remGRMS(lamformula=state_formula(),
+																					 detformula=~1,
+																					 mdetformula=~1,
+																					 data=emf,
+																					 K=K)
+															}
+													} else
 if(modname=="occMS")   {emf=eFrameMS(df=removals, siteCovs=site.data)
-                         model=occMS(lamformula = state_formula(), gamformula = ~1,
-                         						 epsformula= ~1,detformula= ~1, data=emf)}
+		                         model=occMS(lamformula = state_formula(), gamformula = ~1,
+		                         						 epsformula= ~1,detformula= ~1, data=emf)}
 model
 })
 
@@ -214,21 +237,23 @@ removal_plot<-reactive({
 		}
 	} else if(mod_type %in% c("remMN","remGRM")) {
 		removals<-removals()
-		catch<- apply(removals,2,sum,na.rm=TRUE)
-		effort<- rep(nrow(removals), length(catch))
-		plot_data<- tibble(catch=catch, effort=effort, session=1)
-		plot_data<- plot_data %>% mutate(cpue = catch/effort, ccatch = cumsum(catch))
-	} else if(mod_type %in% c("remMNS","occMS")){
-		removals<- removals()
-		tmp<- removals %>% pivot_longer(!session, names_to="period", values_to="catch")
-		plot_data<- tmp %>% group_by(session,period) %>% summarise(catch=sum(catch), .groups="keep")
-		plot_data<- plot_data %>% group_by(session) %>% mutate(cpue = catch, ccatch=cumsum(catch))
+		if(!("session" %in% colnames(removals))) {
+			catch<- apply(removals,2,sum,na.rm=TRUE)
+			effort<- rep(nrow(removals), length(catch))
+			plot_data<- tibble(catch=catch, effort=effort, session=1)
+			plot_data<- plot_data %>% mutate(cpue = catch/effort, ccatch = cumsum(catch))
+			}
+		 else {
+			tmp<- removals %>% pivot_longer(!session, names_to="period", values_to="catch")
+			plot_data<- tmp %>% group_by(session,period) %>% summarise(catch=sum(catch), .groups="keep")
+			plot_data<- plot_data %>% ungroup() %>% mutate(cpue = catch, ccatch=cumsum(catch))
+		 }
 	}
 	plot_data %>%
 		ggplot(aes(ccatch, cpue)) +
 		geom_point() +
 		geom_smooth(method="lm") +
-		facet_wrap(~session, scales="free") +
+		#facet_wrap(~session, scales="free") +
 		labs(x ="Cumulative removals", y="CPUE") +
 		theme_bw() +
 		theme(axis.title.x = element_text(face="bold", size=15),
@@ -253,17 +278,22 @@ detection_plot<-reactive({
 	}
 	else if(mod_type == "remGRM") {
 		detections<- detections()
-		catch<- apply(detections,2,sum,na.rm=TRUE)
-		effort<- rep(nrow(detections), length(catch))
-		cpue<- catch/effort
-		ccatch<- cumsum(catch)
-		plot_data<- tibble(catch=catch, effort=effort, session=1)
-		plot_data %>% mutate(cpue = catch/effort, ccatch = cumsum(catch))
+		if(!("session" %in% colnames(detections))) {
+			catch<- apply(detections,2,sum,na.rm=TRUE)
+			effort<- rep(nrow(detections), length(catch))
+			plot_data<- tibble(catch=catch, effort=effort, session=1)
+			plot_data<- plot_data %>% mutate(cpue = catch/effort, ccatch = cumsum(catch))
+		}
+		else {
+			tmp<- detections %>% pivot_longer(!session, names_to="period", values_to="catch")
+			plot_data<- tmp %>% group_by(session,period) %>% summarise(catch=sum(catch), .groups="keep")
+			plot_data<- plot_data %>% ungroup() %>% mutate(cpue = catch, ccatch=cumsum(catch))
+		}
 	}
 		plot_data %>% ggplot(aes(ccatch, cpue)) +
 		geom_point() +
 		geom_smooth(method="lm") +
-		facet_wrap(~session, scales="free") +
+		#facet_wrap(~session, scales="free") +
 		labs(x ="Cumulative detections", y="DPUE") +
 		theme_bw() +
 		theme(axis.title.x = element_text(face="bold", size=15),
@@ -275,7 +305,8 @@ detection_plot<-reactive({
 abund_plot<- reactive({
 	modname<-ModToFit()
 	mod<-fit_mod()
-	out<- make_abund(mod, modname)
+	pperiods<- pperiods()
+	out<- make_abund(mod, modname, pperiods)
 	out<- out %>% mutate(Session=factor(Session))
 	out %>% ggplot(aes(Session, N, group=1)) +
 		geom_line() +
@@ -291,6 +322,7 @@ abund_plot<- reactive({
 summary_tab<-reactive({
 	mod<- fit_mod()
 	mod_type<- ModToFit()
+	pperiods<- pperiods()
 	out<- make_summary(mod, mod_type)
 	return(out)
 })
@@ -309,8 +341,9 @@ AIC<-reactive({
 abund_tab<-reactive({
 	modname<-ModToFit()
 	mod<-fit_mod()
+	pperiods<- pperiods()
 	buff<-buff()  #buffer zone radius (for later implementation of extrapolation calculation)
-	out<- make_abund(mod, modname)
+	out<- make_abund(mod, modname, pperiods)
 	return(out)
 })
 
@@ -323,11 +356,12 @@ DensRast<-reactive({
 	DTP<- DensToPlot()
 	removals<- removals()
 	traps<- traps()
+	pp<- pperiods()
 	traps_sf<- st_as_sf(traps, coords=c(1,2), crs=st_crs(bound))
 	#get the names of the coefficients that are actually in the model:
 	form<- state_formula()
 	Irast<- make_dens_surface(rast, mod, modname, form, buff)
-	Rrast<- make_resid_dens_surface(Irast, mod, modname, removals, traps_sf, buff)
+	Rrast<- make_resid_dens_surface(Irast, mod, modname, removals, traps_sf, buff, pp)
 	if(DTP %in% "IDens") predras<- Irast
 	else predras<- Rrast
 	predras<- terra::mask(predras, vect(bound))

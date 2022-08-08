@@ -1,4 +1,4 @@
-#this is the app for monitoring eradication assessment using a variety of removal models
+#this is the app for monitoring eradication progress using a variety of removal models
 #relies on the functions in the eradicate package
 require(shiny)
 require(shinycssloaders)
@@ -33,10 +33,9 @@ ui<-fluidPage(
 		 				 radioButtons(inputId="Model", label="Select model",
 		 				 						 choices=list("Nonspatial removals"="remGP",
 		 				 						 						 "Nonspatial removals + Index data"="remGPI",
-		 				 						 						 "Spatial removals (single session)"="remMN",
-		 				 						 						 "Spatial removals + Index data (single session)"="remGRM",
-		 				 						 						 "Spatial removals (multi session)"="remMNS",
-		 				 						 						 "Spatial presence/absence (multi session)"="occMS"
+		 				 						 						 "Spatial removals"="remMN",
+		 				 						 						 "Spatial removals + Index data"="remGRM",
+		 				 						 						 "Spatial presence/absence"="occMS"
 		 				 						 ), selected="remGP"),
 		 				 ),
 		 	#conditionally take input for parameter K, depending on model type.
@@ -63,9 +62,8 @@ ui<-fluidPage(
 		 								 fileInput(inputId="detections", label="Detection histories (.csv)", accept=c("text/csv", ".csv")))),br(), #end conditional block
 		 fluidRow(
 		 	column(3,
-		 conditionalPanel("input.Model=='remMNS' | input.Model=='occMS'",
-		 numericInput(inputId="pperiods", "Sessions", min=0, max=NA, value=1, step=1))))
-		 ),
+		 conditionalPanel("input.Model!='remMN' | input.Model!='remGRM'",
+		 numericInput(inputId="pperiods", "Sessions", min=0, max=NA, value=1, step=1))))),
 		 hr(),
 		 fluidRow(
 		 	column(3,

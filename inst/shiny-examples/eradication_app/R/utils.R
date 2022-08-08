@@ -3,7 +3,7 @@
 load_file <- function(name, path) {
 	if(!is.null(name)) {
 		csv = vroom::vroom(path, delim = ",")  %>%
-			select(-any_of("ID"))
+			dplyr::select(-any_of("ID"))
 	}
 	else csv<- NULL
 	csv
@@ -49,10 +49,6 @@ make_summary<- function(mod, mod_type){
 			detect<- sum_model(mod_summ, 2)
 			mdetect<- sum_model(mod_summ, 3)
 			out<- rbind(state, detect, mdetect)
-	} else if(mod_type %in% "remMNS"){
-		state<- sum_model(mod_summ, 1)
-		detect<- sum_model(mod_summ, 2)
-		out<- rbind(state,detect)
 	} else if(mod_type %in% "occMS") {
 		state<- sum_model(mod_summ, 1)
 		growth<- sum_model(mod_summ, 2)
@@ -71,7 +67,7 @@ sum_model<- function(x, id) {
 	tab
 }
 
-make_abund<- function(mod, mod_type){
+make_abund<- function(mod, mod_type, pp){
 	if(mod_type == "remGP" | mod_type == "remGPI") {
 		Nhat<- calcN(mod, CI.calc="norm")
 		if("efitGPlist" %in% class(mod)) n<- length(mod)
@@ -90,12 +86,14 @@ make_abund<- function(mod, mod_type){
 		}
 	} else
 		if(mod_type %in% c("remMN","remGRM")) {
-			Nhat<- calcN(mod)
-			total<- data.frame(Parameter = "Total", Session=1, Nhat$Nhat)
-			resid<- data.frame(Parameter = "Residual", Session=2, Nhat$Nresid)
-			out<- rbind(total, resid)
-			row.names(out)<- NULL
-		} else if(mod_type %in% "remMNS") {
+			if(pp == 1) {
+				Nhat<- calcN(mod)
+				total<- data.frame(Parameter = "Total", Session=1, Nhat$Nhat)
+				resid<- data.frame(Parameter = "Residual", Session=2, Nhat$Nresid)
+				out<- rbind(total, resid)
+				row.names(out)<- NULL
+			}
+		else {
 			Nhat<- calcN(mod)
 			tmp<- Nhat$Nhat
 			seas<- tmp[['.season']]
@@ -104,6 +102,7 @@ make_abund<- function(mod, mod_type){
 			resid<- data.frame(Parameter = "Residual", Session=max(seas)+1, Nhat$Nresid)
 			out<- rbind(total, resid)
 			row.names(out)<- NULL
+		}
 		} else if(mod_type %in% "occMS") {
 			Nhat<- calcN(mod)
 			tmp<- Nhat$Nhat

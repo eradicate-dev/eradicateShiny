@@ -89,11 +89,9 @@ make_dens_surface<- function(rr, mod, modname, form, buff) {
 	rastfocal<- rast(rastfocal)
 	vals<- as.matrix(rastfocal)
 	vals<-cbind(1, vals) #add an intercept
-	if(modname %in% "remMNS") {
-		inds<- grep(".season", names(coeffs))
-		coeffs<- coeffs[-inds] # only need season1 so other coeffs are redundant
-	}
-	preds.lin<-vals %*% coeffs
+	inds<- grep(".season", names(coeffs))
+	coeffs<- coeffs[-inds] # only need season1 so other coeffs are redundant
+		preds.lin<-vals %*% coeffs
 	}
 	#back transform from link scale.
 	if(modname %in% "occMS"){preds<-plogis(preds.lin)} else
@@ -103,13 +101,23 @@ make_dens_surface<- function(rr, mod, modname, form, buff) {
 	predras
 }
 
-make_resid_dens_surface<- function(rr, mod, modname, removals, locs, buff) {
+make_resid_dens_surface<- function(rr, mod, modname, removals, locs, buff, pp) {
 # apply local residual density to buff area around locs
 	locs_buff<- st_buffer(locs, dist=buff)
 	habvals<- terra::extract(rr, vect(locs_buff), cells=TRUE)
 	re<- raneffects(mod)
 	blp<- blup(re)
-	if(modname %in% "remMNS") {
+	if(modname %in% "occMS") {
+		T<- mod$data$numPrimary
+		R <- as.vector(blp[,T])
+		tr<- tibble(ID=seq_len(nrow(locs)), R = R)
+	}
+	else if(pp == 1) {
+		yr<- apply(removals, 1, sum)
+		R<- blp - yr # residual abundance
+		tr<- tibble(ID=seq_len(nrow(locs)), R = R)
+	}
+	else if(pp > 1) {
 		T<- mod$data$numPrimary
 		yr<- removals %>% filter(session == T) %>% select(-session) # last session
 		yr<- as.matrix(yr)
@@ -117,16 +125,7 @@ make_resid_dens_surface<- function(rr, mod, modname, removals, locs, buff) {
 		R <- as.vector(blp[,T] - ys)
 		tr<- tibble(ID=seq_len(nrow(locs)), R = R)
 	}
-	else if(modname %in% "occMS") {
-		T<- mod$data$numPrimary
-		R <- as.vector(blp[,T])
-		tr<- tibble(ID=seq_len(nrow(locs)), R = R)
-	}
-	else if(modname %in% c("remMN","remGRM")) {
-		yr<- apply(removals, 1, sum)
-		R<- blp - yr # residual abundance
-		tr<- tibble(ID=seq_len(nrow(locs)), R = R)
-	}
+
 	habvals<- left_join(habvals, tr, by = "ID")
 	predras<- rr
 	predras[habvals$cell]<- habvals$R

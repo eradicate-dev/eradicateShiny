@@ -1,4 +1,4 @@
-
+#utils for progress app
 
 load_file <- function(name, path) {
 	if(!is.null(name)) {

@@ -1,4 +1,5 @@
-##DEFINE THE SERVER#####################################################################################################
+## SERVER eradication monitoring
+######################################################
 
 server<-function(input, output, session){
 	#splashscreen
@@ -6,24 +7,19 @@ server<-function(input, output, session){
 	waiter_hide() #hide splash screen
 #Boundary of study area, in a shapefile
 site_bound<-reactive({
-		myshape<-input$boundary
-		dir<-dirname(myshape[1,4])
-		for ( i in 1:nrow(myshape)) {
-			file.rename(myshape[i,4], paste0(dir,"/",myshape[i,1]))
-		}
-		getshp <- list.files(dir, pattern="*.shp", full.names=TRUE)
-		st_read(getshp, quiet=TRUE)
+	myshape<-input$boundary
+	get_zipped_shapefiles(myshape)
 	})
 #raster of habitat suitability. default is San Nicolas
 hab_raster<-reactive({
-	if(is.null(input$habitat_rasters)) {habras<-NULL } else
-	{
-		#habras<-stack(input$habitat_raster$datapath)
-		nrast<-nrow(input$habitat_rasters)
-		rasts<-list()
-		for(i in 1:nrast){rasts[[i]] <- raster(input$habitat_rasters[i, 'datapath'])
-		names(rasts[[i]])<-gsub(".tif", "", input$habitat_rasters[i, 'name'])}
-		habras<-stack(rasts)
+	if(is.null(input$habitat_rasters))
+	{habras<-NULL }
+	else
+	{ nrast<-nrow(input$habitat_rasters)
+	rasts<-list()
+	for(i in 1:nrast){rasts[[i]] <- terra::rast(input$habitat_rasters[i, 'datapath'])
+	names(rasts[[i]])<-gsub(".tif", "", input$habitat_rasters[i, 'name'])}
+	habras<- rast(rasts)
 	}
 	habras
 })
@@ -42,6 +38,11 @@ counts<-reactive({
 		{counts<-read_csv(input$counts$datapath) }
 		counts
 	})
+
+#how many primary sessions?
+pperiods<-reactive({
+	input$pperiods
+})
 
 #special reactive inputs for the REST model-----------------------------------------------------------
 countREST<-reactive({
@@ -79,11 +80,15 @@ activeREST<-reactive({
 #reactive function for habitat value extraction from raster
 ###################################################################################################
 habmean<-reactive({
-	rast<-hab_raster()
-	buff<-buff()
-	dets<-detectors()
-	if(buff==0)		{habvals<-raster::extract(rast, dets, df=TRUE)} else
-		            {habvals<-raster::extract(rast, dets, buffer=buff, fun=mean, df=TRUE)}
+	rast<- hab_raster()
+	buff<- buff()
+	dets<- detectors()
+	dets<- st_as_sf(dets, coords=c(1,2), crs=st_crs(site_bound()))
+	if(buff==0){
+		habvals<-terra::extract(rast, vect(dets))} else
+	{
+		habvals<-terra::extract(rast, vect(st_buffer(dets, buff)), fun=mean, na.rm=TRUE)
+	}
 	habvals
 })
 
@@ -120,7 +125,17 @@ observeEvent(input$EstDens, {
 })
 #disable K if using occupancy model
 observe(if(input$Model!="Occ" | input$Model != "REST") {
-	updateNumericInput(session, "K", value=5*max(counts()) + 50) #sets default value for K
+	if(!is.null(counts()))
+		updateNumericInput(session, "K", value=5*max(counts()) + 50) #sets default value for K
+	else
+		updateNumericInput(session, "K", value=50)
+})
+
+observe(if(input$Model %in% c("Occ","RN","Nmix")) {
+	if("session" %in% colnames(counts()))
+		updateNumericInput(session, "pperiods", value=max(counts()$session)) #update primary periods
+	else
+		updateNumericInput(session, "pperiods", value=1)
 })
 
 #############################################################
@@ -133,9 +148,13 @@ K<-reactive({input$K})
 EstDens<-reactive({input$EstDens})
 
 state_formula<-reactive({
+	modname<- ModToFit()
+	pperiods=pperiods()
 	modelvars<-input$state_formula
 	if(length(modelvars)==0) {form="1"} else
-	                         {form=paste0(modelvars, collapse="+") }
+	{form=paste0(modelvars, collapse="+") }
+	if(pperiods > 1 & !(modname %in% c("REST","Occ")))
+		form<- paste0(form,"+ .season")
 	form<-paste0("~",form)
 	form
 	})
@@ -145,40 +164,59 @@ fit_mod<-reactive({
 	dets<- detectors()
 	cnts<-counts()
 	habmean<-habmean()
-	print(habmean)
 	K<-K()
+	pp<- pperiods()
 	form<-state_formula()
-modname<-ModToFit()
-if(modname!= "REST"){emf<- eradicate::eFrame(cnts, siteCovs = data.frame(habmean))} else
-                    {
-                      Amult<-viewshedMultiplier()
-                    	emf<- eFrameREST(y=countREST(),
-                    									stay=stayREST()[,1],
-                    									cens=stayREST()[,2],
-                    									area=areaREST()/viewshedMultiplier(),
-                    									active_hours=activeREST(),
-                    									siteCovs = data.frame(habmean))}
+	modname<-ModToFit()
+
 #fit the appropriate model
-if(modname== "Occ" ) {model<-eradicate::occuM(state_formula(), ~1, data=emf)}       else
-if(modname== "RN"  ) {model<-eradicate::occuRN(state_formula(), ~1, K=K, data=emf)} else
-if(modname== "Nmix") {model<-eradicate::nmix(state_formula(), ~1, K=K, data=emf)}   else
-if(modname== "REST") {model<-eradicate::REST(state_formula(), data=emf)}
+if(modname== "Occ" ) {
+	if(pp == 1) {
+		emf<- eFrame(cnts, siteCovs = habmean)
+		model<- occM(form, ~1, data=emf)
+	}	else {
+		emf<- eFrameMS(cnts, siteCovs = habmean)
+		model=occMS(lamformula = form, gamformula = ~1,
+								epsformula= ~1,detformula= ~1, data=emf)
+	}
+} else if(modname== "RN"  ) {
+	if(pp == 1) {
+		emf<- eFrame(cnts, siteCovs = habmean)
+		model<- occRN(form, ~1, K=K, data=emf)
+	}	else {
+		emf<- eFrameS(cnts, siteCovs = habmean)
+		model<- occRNS(form, ~1, K=K, data=emf)
+	}
+} else if(modname== "Nmix") {
+	if(pp == 1) {
+		emf<- eFrame(cnts, siteCovs = habmean)
+		model<- nmix(form, ~1, K=K, data=emf)
+	}	else {
+		emf<- eFrameS(cnts, siteCovs = habmean)
+		model<- nmixS(form, ~1, K=K, data=emf)
+	}
+} else if(modname== "REST") {
+	Amult<-viewshedMultiplier()
+	emf<- eFrameREST(y=countREST(),
+									 stay=stayREST()[,1],
+									 cens=stayREST()[,2],
+									 area=areaREST()/viewshedMultiplier(),
+									 active_hours=activeREST(),
+									 siteCovs = data.frame(habmean))
+	model<-eradicate::REST(state_formula(), data=emf)
+}
 model
 })
 
 #summary table of parameter estimates for selected model
 summary_tab<-reactive({
-mod<-fit_mod()
-out<-summary(mod)
-state_tab<-out[[1]]
-state_tab<-data.frame("Type"="State","Covariate"=row.names(state_tab), state_tab)
-detect_tab<-out[[2]]
-detect_tab<-data.frame("Type"="Detect","Covariate"=row.names(detect_tab), detect_tab)
-out<-rbind(state_tab, detect_tab)
-data.frame(out)
-names(out)[6]<-"p"
-out
+	mod<- fit_mod()
+	mod_type<- ModToFit()
+	pp<- pperiods()
+	out<- make_summary(mod, mod_type, pp)
+	return(out)
 })
+
 
 AIC<-reactive({
 	mod<-fit_mod()
@@ -191,58 +229,52 @@ abund_tab<-reactive({
 	modname<-ModToFit()
 	mod<-fit_mod()
 	buff<-buff()  #buffer zone radius
+	pp<- pperiods()
 	#If occupancy, no buffer offset applies, else offset estimate with buffer area
-	if(modname=="Occ") {Nhat<-calcN(mod)} else {Nhat<-calcN(mod)}
-  if(modname=="Occ"){out<-Nhat$Occ} else
-  if(modname=="RN"){out<-Nhat$Nhat} else
-  if(modname=="Nmix"){out<-Nhat$Nhat} else
-  if(modname=="REST"){
+	if(modname=="REST"){
   	rast<-hab_raster()
   	newdat<- as.data.frame(rast)
   	offset<- prod(res(rast))/viewshedMultiplier()
   	Nhat<- calcN(mod, newdata=newdat, off.set = offset)
-  	out<-Nhat$Nhat}
+  	out<-Nhat$Nhat
+  	} else {
+  		out<- make_abund(mod, modname, pp)
+  	}
 	out
 })
 
-DensRast<-reactive({
+abund_plot<- reactive({
 	modname<-ModToFit()
 	mod<-fit_mod()
-	buff<-buff()  #buffer zone radius
-	rast<-hab_raster()
-	bound<-site_bound()
-	#get the names of the coefficients that are actually in the model:
-	form<-state_formula()
-	form_names<-gsub("~", "", form)
-	form_names<-strsplit(form_names, "\\+")
-	#
-	coeffs<-mod$estimates$state$estimates
-	varnames<-names(rast)
+	pperiods<- pperiods()
+	out<- make_abund(mod, modname, pperiods)
+	out<- out %>% mutate(Session=factor(Session))
+	out %>% ggplot(aes(Session, N, group=1)) +
+		geom_line() +
+		geom_linerange(aes(ymin=lcl, ymax=ucl)) +
+		geom_point(color="red", size=2.5) +
+		labs(x ="Session", y="Abundance (N)") +
+		theme_bw() +
+		theme(axis.title.x = element_text(face="bold", size=15),
+					axis.title.y = element_text(face="bold", size=15),
+					axis.text = element_text(size=12))
+})
 
-	#if intercept only, don't bother with focal raster calculations
-	if(form== "~1"){preds.lin<-coeffs[1]} else {
-      #calculate focal rasters, but only for required coefficients
-		  rast_incl<-which(varnames %in% names(coeffs))
-		  rast_use<-rast[[rast_incl]]
-	    filt<-focalWeight(x=rast_use, d=buff, type='circle')
-	    rastfocal<-list()
-	      for(i in seq_along(names(rast_use))){
-	  	  #make a focal layer for each raster in the stack
-	      rastfocal[[i]]<-focal(rast_use[[i]], w=filt,fun=mean, na.rm=TRUE, pad=TRUE)
-	      } #end focal loop
-	  rastfocal<-stack(rastfocal)
-	vals<-getValues(rastfocal)
-	vals<-cbind(1, vals) #add an intercept
-	preds.lin<-vals %*% coeffs
-	}
-	#back transform from link scale.
-	if(modname=="Occ"){preds<-plogis(preds.lin)} else
-	                  {preds<-exp(preds.lin)}
-	predras<-raster(rast)
-	predras[]<-preds
-	predras<-mask(predras, bound)
+DensRast<-reactive({
+	modname<- ModToFit()
+	mod<- fit_mod()
+	buff<- buff()  #buffer zone radius
+	rast<- hab_raster()
+	bound<- site_bound()
+	pp<- pperiods()
+	#get the names of the coefficients that are actually in the model:
+	form<- state_formula()
+	predras<- make_dens_surface(rast, mod, modname, form, buff)
+	predras<- terra::mask(predras, vect(bound))
+	predras<- app(predras, calc_min_max)
 	predras
 })
+
 
 ###########################################################################################
 #
@@ -270,6 +302,11 @@ output$AIC <-renderText({
 	isolate(AIC())
 })
 
+output$abund_plot<- renderPlot({
+	req(input$Run_model)
+	isolate(abund_plot())
+})
+
 #download the density raster
 output$downloadraster <- downloadHandler(
 	filename = "density_raster.tif",
@@ -278,7 +315,6 @@ output$downloadraster <- downloadHandler(
 	}, contentType = "image/tif"
 )
 
-#Render a map of the input data
 output$map<-renderLeaflet({
 	req(input$boundary)
 	req(input$Plot_design)
@@ -288,48 +324,11 @@ output$map<-renderLeaflet({
 	bound<-site_bound()
 	opacity<-habopacity()
 	transparency<-1-opacity
-	detectors<-st_as_sf(detectors(), coords = c(1, 2), crs=st_crs(bound))
-	detector_buff<-st_buffer(detectors, dist=buff())
+	detectors<- detectors()
+	buffer<- buff()
 	habras<-hab_raster()
-	#handling case where there are no habitat rasters
-	if(!is.null(habras)){
-		crs(habras)<-crs(bound) #assume same crs as region boundary
-		habrasproj<-projectRaster(habras, crs="+init=epsg:4326", method="bilinear")
-		nrast<-nlayers(habrasproj)} else {nrast<-0; habrasproj<-NULL} #how many habitat rasters in the stack?
-	palvec<-c("viridis", "magma", "plasma", "inferno")
-  m<-leaflet() %>%
-		addTiles(group="OSM") %>%
-		addProviderTiles("Esri.WorldTopoMap", group="ESRI Topo") %>%
-		addProviderTiles("Esri.WorldImagery", group="ESRI Satellite")
-  # conditional addition of extra raster layers to the plot
-  count=1
-  while(count<=nrast) {
-  	m <- m %>% addRasterImage(habrasproj[[count]],
-  														colors=colorNumeric(palvec[count], values(habrasproj[[count]]), na.color = "#00000000"),
-  														opacity=transparency,
-  														layerId = names(habrasproj)[count],
-  														group=names(habrasproj)[count]) %>%
-  		         addLegend(values=values(habrasproj[[count]]) ,
-  		         					pal = colorNumeric(palvec[count], values(habrasproj[[count]]), na.color = "#00000000"),
-  		         					title=names(habrasproj)[count], bins=5,
-  							        group = names(habrasproj)[count], position="bottomleft")
-
-  	count<-count+1
-  }
-  #adding additional decorations to the plot
-	m<-m %>%
-		addPolygons(data=st_transform(bound, "+init=epsg:4326"), weight=2, fill=FALSE) %>%
-		addCircleMarkers(data=st_transform(detectors, "+init=epsg:4326"), color="red", radius=1, group="detectors") %>%
-		addPolygons(data=st_transform(detector_buff, "+init=epsg:4326"), color="red", weight=1, group="detector buffer") %>%
-		addScaleBar("bottomright", options=scaleBarOptions(imperial=FALSE, maxWidth = 200)) %>%
-		addLayersControl(baseGroups=c("OSM (default)", "ESRI Topo", "ESRI Satellite"),
-										 overlayGroups = c("detectors", "detector buffer", names(habrasproj)),
-										 options=layersControlOptions(collapsed=FALSE)) %>%
-		hideGroup("detector buffer") %>%
-		hideGroup(names(habrasproj)[-1]) #keep the first raster displayed
-	m
-}
-)
+	m<- make_leaflet_map(bound, habras, detectors, buffer, transparency)
+})
 
 #code to update map with raster predictions
 observeEvent(input$EstDens, {
@@ -339,28 +338,35 @@ observeEvent(input$EstDens, {
 	req(input$Run_model)
 	bound<-site_bound()
 	modname<-ModToFit()
-	if(modname=="Occ"){leglab<-"Pr(Occ) for pest"} else {leglab<-"Pest density"}
+	if(modname %in% "Occ"){leglab<-"Pr(Occ) for pest"} else {leglab<-"Relative density"}
 	DensRast <- DensRast()
 	opacity<-habopacity()
 	transparency<-1-opacity
-	crs(DensRast)<-crs(bound)
-	DensRastProj<-projectRaster(DensRast, crs="+init=epsg:4326", method="bilinear")
+	crs(DensRast)<- st_crs(bound)$wkt
+	DensRastProj<- terra::project(DensRast, "epsg:4326", method="bilinear")
 	#need to reimport habitat raster
 	habras<-hab_raster()
-	crs(habras)<-crs(bound) #assume same crs as region boundary
-	habrasproj<-projectRaster(habras, crs="+init=epsg:4326", method="bilinear")
-	pal <- colorNumeric("Reds", values(DensRastProj), na.color = "transparent")
+	crs(habras)<- st_crs(bound)$wkt #assume same crs as region boundary
+	habrasproj<- terra::project(habras, "epsg:4326", method="bilinear")
+	DensRastProj<- raster::raster(DensRastProj)
+	habrasproj<- raster::raster(habrasproj)
+	vrange<- range(values(DensRastProj),na.rm=TRUE)
+	fuzz<- diff(vrange) * 0.01  # add small value so that min and max values appear in plot
+	vrange[1]<- vrange[1] - fuzz
+	vrange[2]<- vrange[2] + fuzz
+	pal <- colorNumeric("Reds", vrange, na.color = "transparent")
 	leafletProxy("map") %>%
 		clearGroup("density raster") %>%
 		removeControl("denslegend") %>%
 		addRasterImage(DensRastProj, colors=pal, layerId = "PestDensity",
-							opacity=transparency, group="density raster") %>%
+									 opacity=transparency, group="density raster") %>%
 		addLegend(position="bottomright", layerId = "denslegend", pal=pal, bins=6, title=leglab, values=values(DensRastProj)) %>%
 		addLayersControl(baseGroups=c("OSM (default)", "ESRI Topo", "ESRI Satellite"),
-										 overlayGroups = c("detectors", "detector buffer", names(habrasproj), "density raster"),
+										 overlayGroups = c("traps", "traps buffer", names(habrasproj), "density raster"),
 										 options=layersControlOptions(collapsed=FALSE)) %>%
-		hideGroup(c("detector buffer", "detectors"))
+		hideGroup(c("traps buffer", "traps", names(habrasproj)))
 })
+
 
 
 

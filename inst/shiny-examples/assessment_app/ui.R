@@ -5,13 +5,12 @@ require(shinycssloaders)
 require(shinyBS)
 require(waiter)
 require(sf)
-require(raster)
+require(terra)
 require(tidyverse)
 require(R.utils)
 require(eradicate)
-require(leaflet)
 require(rgdal)
-require(rgeos)
+require(leaflet)
 require(xtable)
 require(markdown)
 ##DEFINE THE USER INTERFACE################################################################################################
@@ -25,7 +24,7 @@ ui<-fluidPage(
 										".shiny-input-container {margin-bottom: -15px; margin-top: -15px}"))
 	),
 	titlePanel(title=div(
-											 "Pre-eradication assessment",
+											 "eradication monitoring",
 											 img(src="header_banner.png", height=75, align="right"))),
 	sidebarLayout(
 		sidebarPanel(#CHOOSE A MODEL---------------------------------- ---------------------------------------------------
@@ -69,9 +68,13 @@ ui<-fluidPage(
 								 column(5,
 								 			 tipify(numericInput(inputId="viewshedMultiplier", label="Viewshed area multiplier", value=1000000),
 								 			 			 "Muliplier to convert viewshed area units to map area units m2:ha=>10,000, m2:km2=>1,000,000"))
-								 )),
-								 ),
-								 hr(),
+								 )),br(),
+								 fluidRow(
+								 	column(3,
+								 				 conditionalPanel("input.Model!='REST'",
+								 				 	numericInput(inputId="pperiods", "Sessions", min=0, max=NA, value=1, step=1))))
+								 ),hr(),
+
 								 #CONTROLS FOR THE MAP DISPLAY-----------------------------------------------------------------------
 								 fluidRow(
 								 column(3, actionButton("Plot_design", "Plot map")),
@@ -108,7 +111,8 @@ ui<-fluidPage(
 													    leafletOutput(outputId = "map", height=700)),
 									#Fitted models tab
 									tabPanel(title="Fitted model",        value="panel2",
-													    fluidRow( tableOutput(outputId="parameter_table") %>% withSpinner(type=4)),
+											fluidRow( column(5, tableOutput(outputId="parameter_table") %>% withSpinner(type=4)),
+													 					column(6, plotOutput(outputId = "abund_plot", width="100%"))),
 													    fluidRow( tableOutput(outputId="abundance_table") ),
 													    fluidRow( textOutput(outputId="AIC") ),
 													 ),

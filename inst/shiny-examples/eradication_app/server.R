@@ -230,11 +230,9 @@ removal_plot<-reactive({
 		plot_data<- cedata()
 		if(!("session" %in% colnames(plot_data))) {
 			plot_data$session<- 1
-			plot_data<- plot_data %>% mutate(cpue = catch/effort, ccatch = cumsum(catch))
 		}
-		else {
-			plot_data<- plot_data %>% group_by(session) %>% mutate(cpue = catch/effort, ccatch = cumsum(catch))
-		}
+		plot_data<- plot_data %>% mutate(cpue = catch/effort, ccatch = cumsum(catch))
+
 	} else if(mod_type %in% c("remMN","remGRM")) {
 		removals<-removals()
 		if(!("session" %in% colnames(removals))) {

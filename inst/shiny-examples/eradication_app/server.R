@@ -79,11 +79,11 @@ observeEvent(input$EstDens, {
 										selected = "panel1")
 })
 observe(if(input$Model %in% c("remGRM","remMNS")) {
-	updateNumericInput(session, "K", value=5*max(removals()) + 100) #sets default value for K on model select
+	updateNumericInput(session, "K", value=5*max(removals(), na.rm=TRUE) + 100) #sets default value for K on model select
 })
 
 observe(if(input$Model %in% c("remGP","remGPI")) {
-	updateNumericInput(session, "K", value=5*max(cedata()$catch) + 100) #sets default value for K on model select
+	updateNumericInput(session, "K", value=5*max(cedata()$catch, na.rm=TRUE) + 100) #sets default value for K on model select
 })
 
 observe(if(input$Model %in% c("occMS","remMNS")) {

@@ -109,6 +109,7 @@ make_resid_dens_surface<- function(rr, mod, modname, removals, locs, buff) {
 	habvals<- terra::extract(rr, vect(locs_buff), cells=TRUE)
 	re<- raneffects(mod)
 	blp<- blup(re)
+	na_sites<- mod$sitesRemoved
 	if(modname %in% "remMNS") {
 		T<- mod$data$numPrimary
 		yr<- removals %>% filter(session == T) %>% select(-session) # last session
@@ -124,6 +125,7 @@ make_resid_dens_surface<- function(rr, mod, modname, removals, locs, buff) {
 	}
 	else if(modname %in% c("remMN","remGRM")) {
 		yr<- apply(removals, 1, sum)
+		if(length(na_sites) > 0) blp<- insert_zeros(blp, na_sites)
 		R<- blp - yr # residual abundance
 		tr<- tibble(ID=seq_len(nrow(locs)), R = R)
 	}
@@ -138,4 +140,11 @@ calc_min_max<- function(x) {
 	mn<- min(x, na.rm=TRUE)
 	mx<- max(x, na.rm=TRUE)
 	return((x - mn)/(mx - mn))
+}
+
+insert_zeros<- function(vec, zero_inds) {
+	for(i in 1:length(zero_inds)){
+		vec<- R.utils::insert(vec, zero_inds[i], values = 0)
+	}
+	vec
 }

@@ -184,15 +184,13 @@ if(modname== "remMN" )   {emf<-eFrameR(y=removals, siteCovs=site.data, obsCovs=N
 	                       } else
 if(modname== "remGRM"  ) {emf<- eFrameGRM(y=removals,     #removal data
 																					ym=detections,  #these are secondary monitoring detection data
-																					numPrimary=1,
 																					siteCovs = site.data)
 		                     model<- remGRM(lamformula=state_formula(),
-		                     							 phiformula=~1,
 		                     							 detformula=~1,
 		                     							 mdetformula=~1,
 		                     							 data=emf,
 		                     							 K=K)} else
-if(modname== "remMNS" )  {emf=eFrameMNS(df=removals, siteCovs = site.data)
+if(modname== "remMNS" )  {emf=eFrameMNS(rem=removals, siteCovs = site.data)
 	                        model=remMNS(lamformula=state_formula(), detformula = ~1, data=emf)} else
 if(modname=="occMS")   {emf=eFrameMS(df=removals, siteCovs=site.data)
                          model=occMS(lamformula = state_formula(), gamformula = ~1,
@@ -221,7 +219,7 @@ removal_plot<-reactive({
 	} else if(mod_type %in% c("remMNS","occMS")){
 		removals<- removals()
 		tmp<- removals %>% pivot_longer(!session, names_to="period", values_to="catch")
-		plot_data<- tmp %>% group_by(session,period) %>% summarise(catch=sum(catch), .groups="keep")
+		plot_data<- tmp %>% group_by(session,period) %>% summarise(catch=sum(catch, na.rm=TRUE), .groups="keep")
 		plot_data<- plot_data %>% group_by(session) %>% mutate(cpue = catch, ccatch=cumsum(coalesce(catch, 0)))
 	}
 	plot_data %>%
@@ -419,8 +417,8 @@ observeEvent(input$EstDens, {
 	habras<-hab_raster()
 	crs(habras)<- st_crs(bound)$wkt #assume same crs as region boundary
 	habrasproj<- terra::project(habras, "epsg:4326", method="bilinear")
-	DensRastProj<- raster::raster(DensRastProj)
-	habrasproj<- raster::raster(habrasproj)
+	#DensRastProj<- raster::raster(DensRastProj)
+	#habrasproj<- raster::raster(habrasproj)
 	vrange<- range(values(DensRastProj),na.rm=TRUE)
 	fuzz<- diff(vrange) * 0.01  # add small value so that min and max values appear in plot
 	vrange[1]<- vrange[1] - fuzz

@@ -207,22 +207,22 @@ removal_plot<-reactive({
 		plot_data<- cedata()
 		if(!("session" %in% colnames(plot_data))) {
 			plot_data$session<- 1
-			plot_data<- plot_data %>% mutate(cpue = catch/effort, ccatch = cumsum(coalesce(index, 0)))
+			plot_data<- plot_data %>% mutate(cpue = catch/effort, ccatch = cumsum(coalesce(catch, 0)))
 		}
 		else {
-			plot_data<- plot_data %>% group_by(session) %>% mutate(cpue = catch/effort, ccatch = cumsum(coalesce(index, 0)))
+			plot_data<- plot_data %>% group_by(session) %>% mutate(cpue = catch/effort, ccatch = cumsum(coalesce(catch, 0)))
 		}
 	} else if(mod_type %in% c("remMN","remGRM")) {
 		removals<-removals()
 		catch<- apply(removals,2,sum,na.rm=TRUE)
 		effort<- rep(nrow(removals), length(catch))
 		plot_data<- tibble(catch=catch, effort=effort, session=1)
-		plot_data<- plot_data %>% mutate(cpue = catch/effort, ccatch = cumsum(coalesce(index, 0)))
+		plot_data<- plot_data %>% mutate(cpue = catch/effort, ccatch = cumsum(coalesce(catch, 0)))
 	} else if(mod_type %in% c("remMNS","occMS")){
 		removals<- removals()
 		tmp<- removals %>% pivot_longer(!session, names_to="period", values_to="catch")
 		plot_data<- tmp %>% group_by(session,period) %>% summarise(catch=sum(catch), .groups="keep")
-		plot_data<- plot_data %>% group_by(session) %>% mutate(cpue = catch, ccatch=cumsum(coalesce(index, 0)))
+		plot_data<- plot_data %>% group_by(session) %>% mutate(cpue = catch, ccatch=cumsum(coalesce(catch, 0)))
 	}
 	plot_data %>%
 		ggplot(aes(ccatch, cpue)) +
@@ -256,9 +256,9 @@ detection_plot<-reactive({
 		catch<- apply(detections,2,sum,na.rm=TRUE)
 		effort<- rep(nrow(detections), length(catch))
 		cpue<- catch/effort
-		ccatch<- cumsum(catch)
+		ccatch<- cumsum(coalesce(catch, 0))
 		plot_data<- tibble(catch=catch, effort=effort, session=1)
-		plot_data %>% mutate(cpue = catch/effort, ccatch = cumsum(coalesce(index, 0)))
+		plot_data %>% mutate(cpue = catch/effort, ccatch = cumsum(coalesce(catch, 0)))
 	}
 		plot_data %>% ggplot(aes(ccatch, cpue)) +
 		geom_point() +

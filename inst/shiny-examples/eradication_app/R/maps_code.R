@@ -125,6 +125,7 @@ make_resid_dens_surface<- function(rr, mod, modname, removals, locs, buff) {
 	}
 	else if(modname %in% c("remMN","remGRM")) {
 		yr<- apply(removals, 1, sum)
+		yr[is.na(yr)]<- 0
 		if(length(na_sites) > 0) blp<- insert_zeros(blp, na_sites)
 		R<- blp - yr # residual abundance
 		tr<- tibble(ID=seq_len(nrow(locs)), R = R)
@@ -137,9 +138,10 @@ make_resid_dens_surface<- function(rr, mod, modname, removals, locs, buff) {
 
 calc_min_max<- function(x) {
 	# min-max rescaling
+	fuzz<- 1e-4 # avoid div 0
 	mn<- min(x, na.rm=TRUE)
 	mx<- max(x, na.rm=TRUE)
-	return((x - mn)/(mx - mn))
+	return((x - mn + fuzz)/(mx - mn + fuzz))
 }
 
 insert_zeros<- function(vec, zero_inds) {

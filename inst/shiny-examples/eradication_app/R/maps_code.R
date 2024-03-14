@@ -75,7 +75,10 @@ make_dens_surface<- function(rr, mod, modname, form, buff) {
 	varnames<- names(rr)
 	#if intercept only, don't bother with focal raster calculations
 	print("estimating density surface")
-	if(form== "~1"){preds.lin<-coeffs[1]} else {
+	if(!any(varnames %in% names(coeffs))){
+		preds.lin<-coeffs['(Intercept)']
+		}
+	else {
 	#calculate focal rasters, but only for required coefficients
 	rast_incl<-which(varnames %in% names(coeffs))
 	rast_use<-rr[[rast_incl]]
@@ -84,7 +87,7 @@ make_dens_surface<- function(rr, mod, modname, form, buff) {
 	rastfocal<-list()
 	for(i in seq_along(names(rast_use))){
 	#make a focal layer for each raster in the stack
-	rastfocal[[i]]<- terra::focal(rast_use[[i]], w=fwin, fun=mean, na.rm=TRUE, pad=TRUE)
+		rastfocal[[i]]<- terra::focal(rast_use[[i]], w=fwin, fun=mean, na.rm=TRUE, pad=TRUE)
 	} #end focal loop
 	rastfocal<- rast(rastfocal)
 	vals<- as.matrix(rastfocal)
@@ -96,8 +99,11 @@ make_dens_surface<- function(rr, mod, modname, form, buff) {
 	preds.lin<-vals %*% coeffs
 	}
 	#back transform from link scale.
-	if(modname %in% "occMS"){preds<-plogis(preds.lin)} else
-	{preds<-exp(preds.lin)}
+	if(modname %in% "occMS"){
+			preds<-plogis(preds.lin)
+		} else {
+		preds<-exp(preds.lin)
+		}
 	predras<- rast(rr, nlyrs=1)
 	predras[]<-preds
 	predras
